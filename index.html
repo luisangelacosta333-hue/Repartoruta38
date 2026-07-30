@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fdfdfd">
+    <title>Ruta 38 Envíos | Control de Repartos</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root { 
+            --primary-blue: #0284c7; 
+            --cyan-accent: #0ea5e9;
+            --dark-blue: #0369a1; 
+            --bg-dark: #0f172a; 
+            --glass-bg: rgba(15, 23, 42, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-light: #f8fafc; 
+            --text-gray: #94a3b8; 
+            --brand-green: #10b981; 
+            --uala-blue: #0055ff;
+        }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent;}
+        h1, h2, h3, h4, .outfit-font { font-family: 'Outfit', sans-serif; }
+        
+        body { 
+            background-color: var(--bg-dark); 
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(2, 132, 199, 0.15), transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.15), transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-light); 
+            margin: 0; 
+            min-height: 100vh; 
+            overflow-x: hidden; 
+        }
+        
+        .hidden { display: none !important; }
+        .view-container { display: none; flex-direction: column; max-width: 500px; margin: 0 auto; padding: 15px; min-height: 100vh; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .view-container.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-bg { 0% { opacity: 0.6; transform: scale(1); filter: blur(30px); } 100% { opacity: 1; transform: scale(1.15); filter: blur(40px); } }
+        @keyframes float-logo { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+        
+        .mask-text { -webkit-text-security: disc; }
+        
+        .input-premium { width: 100%; padding: 16px 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; border-radius: 14px; font-size: 1.05rem; margin-bottom: 16px; transition: all 0.3s ease; box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); backdrop-filter: blur(10px);}
+        .input-premium:focus { border-color: var(--cyan-accent); outline: none; box-shadow: 0 0 20px rgba(14, 165, 233, 0.3), inset 0 2px 4px rgba(0,0,0,0.2); background: rgba(0,0,0,0.5);}
+        .input-premium::placeholder { color: #64748b; font-weight: 500; }
+        select.input-premium { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.2em; }
+        
+        .btn-premium { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: center; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif;}
+        .btn-premium:active { transform: scale(0.96); }
+
+        /* =========================================
+           VISTA CHOFER - TOTALMENTE FIJA Y SIN SCROLL
+           ========================================= */
+        #view-chofer { 
+            height: 100vh; 
+            height: 100dvh; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 8px 12px;
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%) !important;
+            color: #0f172a !important;
+        }
+        
+        .chofer-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px; flex-shrink: 0; }
+        .pill-btn { background: #ffffff; border-radius: 10px; padding: 6px 8px; font-size: 0.75rem; font-weight: 800; color: #1e293b; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; text-transform: uppercase; border: 1px solid #e2e8f0; transition: 0.2s; white-space: nowrap; }
+        .pill-btn:active { transform: scale(0.95); }
+        .pill-btn.blue { background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; border: none; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3); }
+        .pill-btn.green-text { color: #10b981; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.05); }
+
+        /* --- DISPLAY CON MÁS AIRE Y NÚMEROS MÁS GRANDES --- */
+        .chofer-display { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; min-height: 75px; margin-bottom: 8px; padding: 5px 10px; flex-shrink: 0;}
+        .calc-main-light { font-size: 3.5rem; font-weight: 900; color: #0369a1; line-height: 1; letter-spacing: -1px; font-family: 'Outfit', sans-serif; word-break: break-all; transition: font-size 0.2s; }
+        .calc-hist-light { font-size: 1.1rem; color: #64748b; font-weight: 600; min-height: 1.4rem; margin-bottom: 4px; }
+
+        .chofer-action-row { display: flex; gap: 6px; margin-bottom: 6px; position: relative; z-index: 50; flex-shrink: 0; }
+        .chofer-btn-white { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 4px; flex: 1; font-weight: 800; font-size: 0.85rem; color: #1e293b; box-shadow: 0 4px 10px rgba(0,0,0,0.03); cursor: pointer; transition: transform 0.1s; font-family: 'Outfit', sans-serif; display: flex; justify-content: center; align-items: center; gap: 5px;}
+        .chofer-btn-white:active { transform: scale(0.95); background: #f8fafc; border-color: #cbd5e1; }
+
+        /* NUEVO CONTENEDOR PARA EL ARTÍCULO/BOTÓN CATÁLOGO */
+        .product-list-wrapper { flex: 1; min-height: 0; display:flex; flex-direction:column; justify-content:center; padding: 4px 0; margin-bottom: 8px; }
+
+        .chofer-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
+        .ckey { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; height: 62px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.03); cursor: pointer; font-family: 'Outfit', sans-serif; transition: 0.1s; }
+        .ckey:active { transform: scale(0.92); background: #f1f5f9; }
+        .ckey-op { color: #475569; font-size: 1.9rem; background: #f8fafc; }
+        .ckey-blue { color: #0284c7; font-weight: 900; background: #f8fafc; }
+        .ckey-del { font-size: 1.5rem; color: #475569; background: #f8fafc;}
+        .ckey-eq { background: linear-gradient(180deg, #38bdf8, #0284c7); color: white; box-shadow: 0 6px 12px rgba(2, 132, 199, 0.3); border: none; font-size: 2.2rem; }
+
+        /* --- BOTONES INFERIORES MÁS DELGADOS --- */
+        .chofer-pay-row { display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
+        .chofer-pay-btn { flex: 1; background: linear-gradient(180deg, #38bdf8, #0369a1); color: white; border: none; border-radius: 12px; padding: 10px; font-weight: 900; font-size: 0.95rem; font-family: 'Outfit', sans-serif; text-transform: uppercase; box-shadow: 0 6px 12px rgba(2, 132, 199, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+        .chofer-pay-btn:active { transform: scale(0.95); }
+
+        .chofer-pay-full { background: linear-gradient(180deg, #7dd3fc, #0ea5e9); color: white; border: none; border-radius: 12px; padding: 10px; font-weight: 900; font-size: 0.95rem; font-family: 'Outfit', sans-serif; text-transform: uppercase; box-shadow: 0 6px 15px rgba(14, 165, 233, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
+        .chofer-pay-full:active { transform: scale(0.98); }
+
+        .floating-mic-chofer { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 45px; height: 45px; background: #94a3b8; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.2); cursor: pointer; z-index: 1000; transition: transform 0.2s;}
+        .floating-mic-chofer:active { transform: translateX(-50%) scale(0.9); }
+
+        .light-tx-list .log-row { background: #ffffff !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.02) !important; padding: 12px 10px; margin-bottom: 8px; border-radius: 12px; }
+        .tx-list { display: flex; flex-direction: column; }
+        .log-row { display: flex; justify-content: space-between; align-items: center; }
+        .log-left { display: flex; flex-direction: column; align-items:center; justify-content: center; width: 38px; height: 38px; background: rgba(2, 132, 199, 0.1); border-radius: 50%; font-size: 1.1rem; }
+        .log-info { display: flex; flex-direction: column; flex:1; padding-left:12px; }
+        .log-type { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; margin-bottom:2px; letter-spacing: 0.5px;}
+        .log-date { font-size: 0.65rem; font-weight:600; margin-bottom: 4px;}
+        .log-desc { font-size: 0.85rem; font-weight: 600; line-height: 1.3;}
+        .log-right { display: flex; flex-direction: column; align-items: flex-end; min-width: 70px;}
+        .log-amt { font-size: 1.1rem; font-weight: 900; letter-spacing:-0.5px; font-family: 'Outfit', sans-serif;}
+        .log-method { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; margin-top: 4px;}
+
+        /* MODALES */
+        .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 999999; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);}
+        .modal-content { background: rgba(15, 23, 42, 0.85); padding: 25px 20px; border-radius: 20px; width: 92%; max-width: 380px; text-align: center; border: 1px solid rgba(255,255,255,0.15); max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 60px rgba(0,0,0,0.6); backdrop-filter: blur(25px);}
+        
+        #native-bottom-sheet { position: fixed; bottom: -100%; left: 0; width: 100%; background: rgba(15, 23, 42, 0.95); border-radius: 24px 24px 0 0; z-index: 9999999; transition: bottom 0.4s cubic-bezier(0.3, 1, 0.3, 1); padding: 15px 25px 35px 25px; box-shadow: 0 -15px 50px rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(20px);}
+        #native-bottom-sheet.show { bottom: 0; }
+        .sheet-drag { width: 50px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 5px; margin: 0 auto 20px auto; }
+        .sheet-options-row { display: flex; gap: 30px; justify-content: center; margin-top: 10px; }
+        .sheet-btn { display: flex; flex-direction: column; align-items: center; gap: 10px; border: none; background: transparent; cursor: pointer; color: white; font-size: 0.9rem; font-weight: 600; padding: 0; transition: 0.2s;}
+        .sheet-btn:active { transform: scale(0.9); }
+        .sheet-btn-icon { width: 65px; height: 65px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--cyan-accent); box-shadow: 0 10px 25px rgba(0,0,0,0.3); backdrop-filter: blur(10px);}
+        .sheet-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999998; display: none; opacity: 0; transition: opacity 0.3s; }
+        .sheet-overlay.show { display: block; opacity: 1; }
+        
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* LANDING & ADMIN CSS */
+        .chofer-bg-admin { background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%) !important; color: #0f172a !important; padding: 15px; }
+        
+        .landing-wrapper { background: #fdfdfd; margin: -20px; padding: 20px; min-height: 100vh; color: #0f172a; padding-bottom: 50px; position: relative; overflow: hidden; }
+        .landing-wrapper::before { content: ''; position: absolute; top: 0%; left: -25%; width: 70%; height: 80%; background: radial-gradient(circle, rgba(14, 165, 233, 0.25) 0%, transparent 60%); border-radius: 50%; animation: pulse-bg 6s infinite alternate; z-index: 0; filter: blur(40px); }
+        .landing-wrapper::after { content: ''; position: absolute; bottom: 0%; right: -25%; width: 70%; height: 80%; background: radial-gradient(circle, rgba(2, 132, 199, 0.25) 0%, transparent 60%); border-radius: 50%; animation: pulse-bg 8s infinite alternate-reverse; z-index: 0; filter: blur(40px); }
+        .landing-content { position: relative; z-index: 1; }
+        .landing-hero-3d { text-align: center; padding: 30px 0 15px 0; position: relative; }
+        .logo-3d-container { width: 170px; height: 170px; margin: 0 auto 25px auto; border-radius: 50%; background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(2, 132, 199, 0.05)); border: 2px solid rgba(14, 165, 233, 0.3); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 0 60px rgba(14, 165, 233, 0.4), inset 0 0 30px rgba(14, 165, 233, 0.2); animation: float-logo 4s ease-in-out infinite; }
+        .logo-3d-text { font-size: 7rem; font-family: 'Outfit', sans-serif; font-weight: 900; color: #ffffff; text-shadow: 0 0 20px #0ea5e9, 0 0 40px #0284c7, 0 0 60px #0284c7, 0 0 80px #0369a1; letter-spacing: -4px; line-height: 1; margin-right: 5px; }
+        .glass-card-light { background: rgba(255, 255, 255, 0.7); border-radius: 24px; padding: 30px 20px; margin-bottom: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.03), inset 0 0 0 1px rgba(255,255,255,0.7); border: 1px solid rgba(203, 213, 225, 0.4); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+        .input-light { width:100%; padding:15px 20px; border: 1px solid rgba(203, 213, 225, 0.6); border-radius:14px; margin-bottom:14px; font-size:1rem; background: rgba(255, 255, 255, 0.85); color:#0f172a; outline:none; box-shadow: inset 0 2px 5px rgba(0,0,0,0.01); transition: all 0.3s; }
+        .input-light:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1), inset 0 2px 5px rgba(0,0,0,0.01); background: #ffffff; }
+        .btn-gradient { width:100%; padding:16px; background: linear-gradient(135deg, #0284c7, #0ea5e9); color:white; font-weight:800; font-size:1rem; border:none; border-radius:14px; box-shadow: 0 10px 25px rgba(2, 132, 199, 0.25), inset 0 2px 0 rgba(255,255,255,0.15); text-transform:uppercase; cursor:pointer; letter-spacing: 0.5px; font-family: 'Outfit', sans-serif; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-gradient:active { transform: translateY(2px); box-shadow: 0 5px 15px rgba(2, 132, 199, 0.25); }
+        .btn-whatsapp { width:100%; padding:16px; background: #25D366; color:white; font-weight:900; font-size:1.05rem; border:none; border-radius:14px; box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4); text-transform:uppercase; margin-bottom: 40px; cursor:pointer; transition: 0.2s; font-family:'Outfit',sans-serif; }
+        .btn-whatsapp:active { transform: scale(0.97); }
+        
+        .input-light-admin { width: 100%; padding: 14px; background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a; border-radius: 12px; font-size: 0.95rem; margin-bottom: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s; }
+        .input-light-admin:focus { border-color: #0ea5e9; outline: none; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1); }
+        .input-light-admin::placeholder { color: #94a3b8; }
+
+        .check-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; font-size: 0.95rem; color: #475569; font-weight: 500; line-height: 1.4; text-align: left;}
+        .check-icon { background: #0ea5e9; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.2); margin-top: 2px; }
+        .footer-tech { text-align: center; margin-top: 40px; padding-top: 30px; border-top: 1px solid rgba(0,0,0,0.06); position: relative; z-index: 1; }
+        .footer-tech .company { font-size: 1.3rem; color: #0284c7; font-weight: 900; font-family: 'Outfit', sans-serif; letter-spacing: 2px; margin-bottom: 5px; }
+        .footer-tech p { margin: 0 0 4px 0; font-size: 0.85rem; color: #64748b; font-weight: 500; line-height: 1.5; }
+        .footer-tech .year { font-size: 0.75rem; color: #94a3b8; margin-top: 12px; font-weight: 600; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 99999999; pointer-events: none;">
+        <div id="toast" style="background: rgba(16, 185, 129, 0.95); color: #fff; padding: 14px 30px; border-radius: 50px; font-weight: 800; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(-20px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); font-size: 1rem; border: 1px solid #39ff14; text-transform: uppercase; letter-spacing: 0.5px; backdrop-filter: blur(10px);"></div>
+    </div>
+
+    <!-- Inputs ocultos para fotos -->
+    <input type="file" id="foto-input-camara" accept="image/*" capture="environment" style="display:none;" onchange="processTransferWithPhoto(event)">
+    <input type="file" id="foto-input-galeria" accept="image/*" style="display:none;" onchange="processTransferWithPhoto(event)">
+
+    <!-- Modales App Interna -->
+    <div class="sheet-overlay" id="sheet-overlay" onclick="cerrarSheet()"></div>
+    <div id="native-bottom-sheet">
+        <div class="sheet-drag"></div>
+        <div class="sheet-options-row">
+            <button class="sheet-btn" onclick="elegirCamara()"><div class="sheet-btn-icon">📷</div><span style="color:#0f172a">Cámara</span></button>
+            <button class="sheet-btn" onclick="elegirGaleria()"><div class="sheet-btn-icon">🖼️</div><span style="color:#0f172a">Galería</span></button>
+        </div>
+    </div>
+
+    <div class="modal" id="receipt-modal" onclick="this.style.display='none'" style="z-index: 99999999;">
+        <div class="modal-content" style="padding:10px; background:transparent; border:none; box-shadow:none;">
+            <img id="receipt-img" src="" style="max-width:100%; border-radius:16px; box-shadow: 0 20px 60px rgba(0,0,0,0.8);">
+            <p style="color:white; font-weight:800; margin-top:20px; font-size:1.1rem; letter-spacing:1px; background: rgba(0,0,0,0.6); padding: 12px 24px; border-radius: 50px; display: inline-block; backdrop-filter: blur(10px);">CERRAR FOTO</p>
+        </div>
+    </div>
+
+    <!-- CATÁLOGO MODAL FULL SCREEN -->
+    <div class="modal" id="catalogo-modal" style="background:#f8fafc; align-items:flex-start;">
+        <div style="width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; background: #fdfdfd; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <div style="background: #ffffff; padding: 15px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02); flex-shrink: 0;">
+                <div style="width:24px;"></div>
+                <h2 style="margin:0; color:#0f172a; font-family:'Outfit',sans-serif; font-size: 1.4rem;">📦 Catálogo Completo</h2>
+                <button style="background:transparent; border:none; font-size:1.5rem; color:#64748b; cursor:pointer;" onclick="document.getElementById('catalogo-modal').style.display='none'">×</button>
+            </div>
+
+            <div style="padding: 15px; flex-shrink: 0; background:#ffffff;">
+                <input type="text" id="search-catalog" class="input-light-admin" placeholder="🔍 Buscar por nombre o código..." onkeyup="renderCatalogModal()" style="margin-bottom:0; background:#f8fafc; border-color:#cbd5e1; font-size:1rem; padding:14px; border-radius:12px;">
+            </div>
+
+            <div id="catalogo-list-container" style="flex: 1; overflow-y: auto; padding: 15px; display:flex; flex-direction:column; gap:10px; background:#f8fafc;">
+                <!-- Items cargados por JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="paywall-modal">
+        <div class="modal-content" style="border-top: 5px solid var(--uala-blue);">
+            <div style="font-size: 2.5rem; margin-bottom: 10px;">⏳</div>
+            <h1 style="color:white; font-size:1.5rem; margin-top:0; font-weight: 900; font-family:'Outfit',sans-serif;">Licencia Expirada</h1>
+            <p style="color:var(--text-gray); margin-bottom: 20px; font-size:0.9rem; line-height: 1.5;">Tu prueba gratis terminó. Renovate por 30 días para seguir usando el sistema.</p>
+            
+            <div style="background:rgba(0,0,0,0.4); padding:20px; border-radius:20px; border: 1px solid var(--glass-border); margin-bottom:20px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+                <h2 style="margin:0; color:white; font-size: 2rem; font-weight: 900; letter-spacing: -1px; font-family:'Outfit',sans-serif;">$9.000</h2>
+                <span style="font-size:0.8rem; color:var(--text-gray); display: block; margin-top: 5px; font-weight: 600;">ARS / MES</span>
+            </div>
+            
+            <button class="btn-premium" style="background:var(--uala-blue); color:white; margin-bottom:12px; box-shadow: 0 8px 25px rgba(0, 85, 255, 0.4);" onclick="pagarConUala()">💳 PAGAR CON UALÁ</button>
+            <p id="uala-loading" style="display:none; color:var(--cyan-accent); font-weight:bold; margin-bottom: 15px; font-size:0.85rem;">Generando link seguro...</p>
+            <button class="btn-premium" style="background:transparent; border:1px solid var(--glass-border); color:var(--text-gray); font-size:0.85rem; box-shadow: none;" onclick="location.reload()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="modal" id="pin-modal">
+        <div class="modal-content" style="border-top: 5px solid var(--primary-blue); background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a;">
+            <div style="font-size: 2rem; margin-bottom: 10px;">🔒</div>
+            <h3 style="margin-bottom: 20px; font-size:1.2rem; font-weight:900; color:#0f172a; margin-top:0; font-family:'Outfit',sans-serif;">Bóveda Dueño</h3>
+            <input type="tel" id="pin-input" class="input-premium mask-text" style="text-align:center; font-size:2rem; letter-spacing:15px; padding:15px; background:#f8fafc; color:#0f172a; border-color:#e2e8f0;" maxlength="4" placeholder="****" autocomplete="off">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-premium" style="background:#f1f5f9; color: #475569; font-size:0.9rem; flex:1; border: 1px solid #cbd5e1;" onclick="document.getElementById('pin-modal').style.display='none'">Cancelar</button>
+                <button class="btn-premium" style="background:linear-gradient(135deg, var(--primary-blue), var(--dark-blue)); color:white; font-size:0.9rem; flex:1; box-shadow: 0 8px 20px rgba(2, 132, 199, 0.4);" onclick="verifyAdminPin()">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="expense-modal">
+        <div class="modal-content" style="border-top: 5px solid #e11d48; background: #ffffff; border: 1px solid #e2e8f0;">
+            <div style="font-size: 2rem; margin-bottom: 10px;">💸</div>
+            <h3 style="margin-bottom: 10px; font-size:1.2rem; color:#e11d48; font-weight:900; margin-top:0; font-family:'Outfit',sans-serif;">Registrar Gasto/Retiro</h3>
+            <p id="exp-monto-text" style="color:#10b981; font-size:2rem; font-weight:900; margin-bottom:20px; letter-spacing: -1px; font-family:'Outfit',sans-serif;"></p>
+            <input type="text" id="exp-rsn" class="input-premium" style="background:#f8fafc; color:#0f172a; border-color:#e2e8f0;" placeholder="Detalle (Ej: Nafta, Peaje)">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-premium" style="background:#f1f5f9; color: #475569; border: 1px solid #cbd5e1; flex: 1;" onclick="document.getElementById('expense-modal').style.display='none'">Cancelar</button>
+                <button class="btn-premium" style="background:#e11d48; color: white; flex: 1; box-shadow: 0 8px 20px rgba(225, 29, 72, 0.4);" onclick="submitExpense()">Descontar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NUEVO MODAL DE CLIENTES CON CAJAS SEPARADAS DE FIAR Y COBRAR -->
+    <div class="modal" id="fiado-modal" style="background:#f8fafc; align-items:flex-start;">
+        <div style="width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; background: #fdfdfd; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <div style="background: #ffffff; padding: 15px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02); flex-shrink: 0;">
+                <div style="width:24px;"></div>
+                <h2 style="margin:0; color:#0369a1; font-family:'Outfit',sans-serif; font-size: 1.4rem;" id="fiado-monto-text">💰 MONTO: $0</h2>
+                <button style="background:transparent; border:none; font-size:1.5rem; color:#64748b; cursor:pointer;" onclick="document.getElementById('fiado-modal').style.display='none'">×</button>
+            </div>
+
+            <div style="padding: 15px; flex: 1; overflow-y: auto;">
+                <div style="background:#ffffff; border-radius:16px; padding:20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom:20px; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 15px 0; color:#0f172a; font-family:'Outfit',sans-serif; font-size:1.1rem;">➕ Nuevo Cliente</h4>
+                    <input type="text" id="new-client-name" class="input-light-admin" placeholder="Nombre completo" style="margin-bottom:10px;">
+                    <input type="tel" id="new-client-wa" class="input-light-admin" placeholder="WhatsApp" style="margin-bottom:15px;">
+                    <button class="btn-gradient" style="background: #0ea5e9; padding:14px; font-size:0.95rem; border-radius: 12px;" onclick="crearNuevoCliente()">GUARDAR</button>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="search-client" class="input-light-admin" placeholder="🔍 Buscar cliente..." style="padding: 14px; font-size: 1rem; border-radius: 12px; border: 1px solid #cbd5e1; background: #ffffff;" onkeyup="renderFiadoClients()">
+                </div>
+
+                <!-- LISTA CON SCROLL -->
+                <div id="fiado-clients-list" style="display:flex; flex-direction:column; gap:12px; padding-bottom:10px; max-height: 55vh; overflow-y: auto;">
+                    <!-- Tarjetas inyectadas por JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MIS VENTAS (CHOFER) -->
+    <div class="modal" id="ventas-modal">
+        <div class="modal-content" style="border-top: 5px solid #10b981; background: #ffffff; border: 1px solid #e2e8f0; height: 85vh; display:flex; flex-direction:column; padding: 20px 15px;">
+            <h3 style="margin-top:0; margin-bottom:15px; font-size:1.2rem; font-weight:900; color:#0f172a; font-family:'Outfit',sans-serif;">🧾 Mis Ventas de Hoy</h3>
+            <div id="chofer-logs-modal-container" class="tx-list light-tx-list" style="flex:1; overflow-y:auto; text-align:left; padding-right:5px;"></div>
+            <button class="btn-premium" style="background:#f1f5f9; color: #475569; border: 1px solid #cbd5e1; margin-top:15px; flex-shrink:0;" onclick="document.getElementById('ventas-modal').style.display='none'">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- LANDING PAGE COMPLETA Y ORIGINAL -->
+    <div id="view-login" class="view-container active landing-wrapper">
+        <div class="landing-content">
+            <div class="landing-hero-3d">
+                <div class="logo-3d-container"><div class="logo-3d-text">38</div></div>
+                <h1 style="font-size: 2.2rem; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; line-height: 1.1; font-family:'Outfit',sans-serif;">RUTA 38<br><span style="color: #0ea5e9;">ENVÍOS</span></h1>
+                <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; font-weight: 500; margin: 0 10px 15px 10px;">La inteligencia artificial que <b>controla los repartos de tu distribuidora, panadería o comercio de artículo único las 24 hs</b>.</p>
+                <button onclick="leerCaracteristicasApp()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 900; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4); cursor: pointer; font-size: 0.95rem; letter-spacing: 0.5px; transition: transform 0.2s;">🎙️ ESCUCHAR CÓMO FUNCIONA</button>
+            </div>
+
+            <div class="glass-card-light" style="border-top: 4px solid #0ea5e9; padding: 25px 20px;">
+                <h2 style="text-align: center; font-size: 1.4rem; font-weight: 900; margin: 0 0 5px 0; color: #0f172a; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">CREAR CUENTA</h2>
+                <p style="text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 20px; font-weight: 600;">30 segundos · Listo para usar</p>
+                
+                <input type="text" id="reg-local" placeholder="Nombre de tu Local" class="input-light">
+                <select id="reg-prov" class="input-light">
+                    <option value="" disabled selected>Provincia</option>
+                    <option>Tucumán</option><option>Buenos Aires</option><option>CABA</option><option>Catamarca</option><option>Chaco</option><option>Chubut</option><option>Córdoba</option><option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option><option>Jujuy</option><option>La Pampa</option><option>La Rioja</option><option>Mendoza</option><option>Misiones</option><option>Neuquén</option><option>Río Negro</option><option>Salta</option><option>San Juan</option><option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option><option>Santiago del Estero</option><option>Tierra del Fuego</option>
+                </select>
+                <input type="tel" id="reg-phone" placeholder="Tu WhatsApp (Ej: 381...)" class="input-light">
+                <input type="password" id="reg-pin" placeholder="PIN de 4 dígitos" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px;">
+                <button onclick="registerAccount()" class="btn-gradient">✅ Activar cuenta</button>
+            </div>
+
+            <div class="glass-card-light" style="padding: 20px;">
+                <h2 style="text-align: center; font-size: 1.2rem; font-weight: 900; margin: 0 0 15px 0; color: #0f172a; font-family:'Outfit',sans-serif;">🛡️ YA TENGO CUENTA</h2>
+                <input type="text" id="login-user" placeholder="Nombre del Local" class="input-light" spellcheck="false" style="margin-bottom: 12px;">
+                <input type="password" id="login-pass" placeholder="PIN" class="input-light mask-text" style="margin-bottom: 15px;">
+                <button onclick="executeLogin()" style="width:100%; padding:15px; background:rgba(14, 165, 233, 0.05); color:#0ea5e9; font-weight:800; font-size:0.95rem; border:2px solid #0ea5e9; border-radius:14px; text-transform:uppercase; cursor:pointer; transition: 0.2s; font-family:'Outfit',sans-serif;">Entrar a mi caja</button>
+            </div>
+
+            <button class="btn-whatsapp" onclick="window.open('https://wa.me/5493815110171', '_blank')">💬 Hablar con un Asesor</button>
+
+            <!-- SECCIONES DE PRECIOS ORIGINALES -->
+            <div style="text-align:center; margin-bottom: 20px;">
+                <h2 style="font-size: 2rem; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; line-height: 1.1; letter-spacing:-1px; font-family:'Outfit',sans-serif;">Elegí tu nivel de<br><span style="color: #0ea5e9;">control</span></h2>
+                <p style="font-size: 0.95rem; color: #475569; margin: 0; padding:0 10px;">Diseñado para dueños de distribuidoras y panaderías que quieren números reales.</p>
+            </div>
+
+            <div class="glass-card-light" style="padding: 30px 20px; position: relative;">
+                <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Prueba sin riesgo</span>
+                <h3 style="font-size: 1.4rem; font-weight: 900; color: #0f172a; margin: 15px 0 5px 0; font-family:'Outfit',sans-serif;">Gratis</h3>
+                
+                <div style="font-size: 2.5rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 5px; letter-spacing: -1.5px; font-family:'Outfit',sans-serif;">$0</div>
+                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(0,0,0,0.05); font-weight: 500;">30 días de acceso total · Sin tarjeta</p>
+                
+                <div class="check-item"><span class="check-icon">✓</span> <span>Control básico de ventas y caja en calle</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Registro de gastos y retiros de choferes</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Libreta de fiados comunitaria</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Cierre de turno y descarga PDF</span></div>
+            </div>
+
+            <div class="glass-card-light" style="padding: 35px 20px 25px 20px; border: 2px solid #0ea5e9; position: relative; box-shadow: 0 25px 50px rgba(14,165,233,0.15);">
+                <span style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #0ea5e9; color: #ffffff; padding: 5px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; width:max-content; box-shadow: 0 4px 10px rgba(14,165,233,0.3);">El más elegido</span>
+                
+                <h3 style="font-size: 1.4rem; font-weight: 900; color: #0f172a; margin: 0 0 5px 0; font-family:'Outfit',sans-serif;">Control Total</h3>
+                
+                <div style="font-size: 2.2rem; font-weight: 900; color: #0ea5e9; line-height: 1; margin-bottom: 5px; display:flex; align-items:flex-end; letter-spacing: -1px; font-family:'Outfit',sans-serif;">$9.000<span style="font-size:0.85rem; color:#64748b; margin-bottom:4px; margin-left: 4px; font-weight: 600; font-family:'Inter',sans-serif;">/mes</span></div>
+                <p style="color: #64748b; font-size: 0.8rem; margin-bottom: 20px; border-bottom: 1px dashed rgba(0,0,0,0.1); padding-bottom: 15px; font-weight: 500;">ARS · Facturable · Activación por IA</p>
+                
+                <div class="check-item"><span class="check-icon">✓</span> <span><b>Control total de tus repartidores</b> en la calle</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Caja Inteligente con foto de cada transferencia</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Libreta de fiados + <b>cobranza automática por WhatsApp</b></span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Stock y cargas para preventistas y choferes</span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Panel Maestro para <b>varias sucursales o camiones</b></span></div>
+                <div class="check-item"><span class="check-icon">✓</span> <span>Asistente de voz que te explica todo sin leer nada</span></div>
+                
+                <button onclick="window.scrollTo({top: 0, behavior: 'smooth'}); setTimeout(()=>document.getElementById('reg-local').focus(), 500);" class="btn-gradient" style="margin-top:15px;">Activar Premium Ahora</button>
+            </div>
+
+            <!-- SECCIONES DE CARACTERÍSTICAS -->
+            <div style="text-align:center; margin-bottom: 20px;">
+                <h2 style="font-size: 2rem; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; line-height: 1.1; letter-spacing:-1px; font-family:'Outfit',sans-serif;">La fuerza de<br><span style="color:#0ea5e9;">tu negocio</span></h2>
+                <p style="font-size: 0.95rem; color: #475569; margin: 0; padding:0 10px;">El empleado ideal que nunca duerme.</p>
+            </div>
+
+            <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
+                <div style="width:45px; height:45px; background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(14,165,233,0.3);">🚚</div>
+                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Control de Repartidores</h4>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Ideal para soda, bebidas o panaderías. Seguí el recorrido, las ventas y el stock de cada camión o preventista al instante.</p>
+            </div>
+            
+            <!-- NUEVA CAJA MONOPRODUCTO -->
+            <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
+                <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(16,185,129,0.3);">🔋</div>
+                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Venta de Artículo Único</h4>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Baterías, garrafas o bidones. Si vendés un solo producto, el sistema lo autoselecciona para que tu empleado venda y cobre en un segundo, sin buscar nada.</p>
+            </div>
+
+            <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
+                <div style="width:45px; height:45px; background:linear-gradient(135deg, #8b5cf6, #6366f1); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(99,102,241,0.3);">🤖</div>
+                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Auditoría IA GPT-4o</h4>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Lee comprobantes, montos, alias y CBU de tus choferes. Responde APROBADO o RECHAZADO al instante sin que vos mires.</p>
+            </div>
+
+            <div class="glass-card-light" style="padding:20px; margin-bottom:25px;">
+                <div style="width:45px; height:45px; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(245,158,11,0.3);">📝</div>
+                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Libreta de Fiados</h4>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Tus repartidores agregan clientes y fían montos en la calle. La deuda central se actualiza y vos cobrás por WhatsApp.</p>
+            </div>
+
+            <div class="footer-tech">
+                <div class="company">ENERGY</div>
+                <p>Empresa de Tecnología y Software</p>
+                <p>Logística · IA · Automatización</p>
+                <div class="year">ARGENTINA 2026</div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PANTALLA DEL CHOFER / CALCULADORA -->
+    <div id="view-chofer" style="display:none;">
+        <span id="lbl-user" style="display:none;"></span> 
+        
+        <div class="chofer-top-bar">
+            <div class="pill-btn blue" onclick="leerCaracteristicasApp()">🎙️ IA</div>
+            <div class="pill-btn green-text" id="lbl-days-chofer">⏳ --D</div>
+            <div class="pill-btn" id="btn-gps" onclick="toggleGps()"><span class="n-icon">📍</span> OFF</div>
+            <div class="pill-btn" onclick="document.getElementById('pin-modal').style.display='flex'">🔒</div>
+            <div class="pill-btn" onclick="location.reload()">SALIR</div>
+        </div>
+
+        <div class="chofer-display">
+            <div id="calc-preview" class="calc-hist-light"></div>
+            <div id="calc-total" class="calc-main-light">0</div>
+        </div>
+
+        <div class="chofer-action-row">
+            <button class="chofer-btn-white" onclick="triggerExpenseModal()">Gastos 💸</button>
+            <button class="chofer-btn-white" onclick="abrirModalFiado()">Clientes 📝</button>
+            <button class="chofer-btn-white" style="border-color:#10b981; color:#10b981;" onclick="document.getElementById('ventas-modal').style.display='flex'">Ventas 🧾</button>
+        </div>
+
+        <!-- EL NUEVO ESPACIO LIMPIO PARA EL CATÁLOGO -->
+        <div id="chofer-product-list" class="product-list-wrapper"></div>
+
+        <div class="chofer-keypad">
+            <button class="ckey" onclick="inputCalc('7')">7</button>
+            <button class="ckey" onclick="inputCalc('8')">8</button>
+            <button class="ckey" onclick="inputCalc('9')">9</button>
+            <button class="ckey ckey-del" onclick="deleteCalc()">⌫</button>
+
+            <button class="ckey" onclick="inputCalc('4')">4</button>
+            <button class="ckey" onclick="inputCalc('5')">5</button>
+            <button class="ckey" onclick="inputCalc('6')">6</button>
+            <button class="ckey ckey-op" onclick="inputCalc('×')">×</button>
+
+            <button class="ckey" onclick="inputCalc('1')">1</button>
+            <button class="ckey" onclick="inputCalc('2')">2</button>
+            <button class="ckey" onclick="inputCalc('3')">3</button>
+            <button class="ckey ckey-op" onclick="inputCalc('-')">-</button>
+
+            <button class="ckey ckey-blue" onclick="clearCalc()">C</button>
+            <button class="ckey" onclick="inputCalc('0')">0</button>
+            <button class="ckey ckey-op" onclick="inputCalc('+')">+</button>
+            <button class="ckey ckey-eq" onclick="evalCalc()">=</button>
+        </div>
+
+        <div class="chofer-pay-row">
+            <button class="chofer-pay-btn" onclick="submitSale('EFECTIVO')">💵 EFE</button>
+            <button class="chofer-pay-btn" onclick="submitSale('DEBITO')">💳 DEB</button>
+        </div>
+        
+        <div style="display:flex; gap: 8px; flex-shrink: 0;">
+            <button class="chofer-pay-full" style="margin-bottom:0; flex: 2; padding: 10px;" onclick="abrirSheetTransfVenta()">🏦 TRANSF • FOTO</button>
+            <button class="chofer-pay-btn" style="margin-bottom:0; flex: 1; padding: 8px; font-size: 0.75rem; background: linear-gradient(180deg, #0284c7, #0369a1);" onclick="closeRegister()">CERRAR<br>TURNO</button>
+        </div>
+    </div>
+
+
+    <!-- PANTALLA DEL DUEÑO -->
+    <div id="view-admin" class="view-container chofer-bg-admin" style="height: auto; overflow: visible;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+            <div>
+                <span style="font-size:0.75rem; color:#64748b; font-weight:800; text-transform:uppercase; letter-spacing: 0.5px;">Panel de Control</span><br>
+                <span id="lbl-owner" style="font-weight:900; font-size:1.6rem; color:#0f172a; font-family: 'Outfit', sans-serif;">LOCAL</span>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+                <span id="lbl-days-admin" style="font-size:0.75rem; font-weight:800; background: rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.3); padding:6px 12px; border-radius:8px; color:#10b981; text-transform: uppercase;">⏳ -- Días</span>
+                <div style="display:flex; gap:8px;">
+                    <button style="border: 1px solid #0ea5e9; color:#0ea5e9; padding: 8px 12px; border-radius: 10px; background: rgba(14, 165, 233, 0.1); font-weight: 800; font-size:0.75rem; cursor: pointer; text-transform:uppercase;" onclick="descargarPDFDay()">📥 PDF DÍA</button>
+                    <button style="border: 1px solid #cbd5e1; color:#475569; padding: 8px 12px; border-radius: 10px; background: #f1f5f9; font-weight: 800; font-size:0.75rem; cursor: pointer; text-transform:uppercase;" onclick="go('view-chofer')">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;">
+            <div style="grid-column: span 2; background: #ffffff; padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #10b981;"></div>
+                <span style="font-size:0.8rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing: 0.5px;">💵 Efectivo Físico a Rendir</span>
+                <div id="adm-cash" style="font-size:2.8rem; font-weight:900; color:#10b981; margin-top:8px; letter-spacing: -1px; font-family: 'Outfit', sans-serif;">$0</div>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.02);">
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #0ea5e9;"></div>
+                <span style="font-size:0.7rem; font-weight:800; color:#64748b; text-transform:uppercase;">🏦 Transferencias</span>
+                <div id="adm-transf" style="font-size:1.4rem; font-weight:900; color:#0ea5e9; margin-top:8px; font-family: 'Outfit', sans-serif;">$0</div>
+            </div>
+            <div style="background: #ffffff; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 8px 20px rgba(0,0,0,0.02);">
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #0284c7;"></div>
+                <span style="font-size:0.7rem; font-weight:800; color:#64748b; text-transform:uppercase;">📒 Plata en Calle</span>
+                <div id="adm-fiado" style="font-size:1.4rem; font-weight:900; color:#0284c7; margin-top:8px; font-family: 'Outfit', sans-serif;">$0</div>
+            </div>
+        </div>
+
+        <div style="background:#ffffff; padding:15px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #8b5cf6;"></div>
+            <h3 style="font-size:1.1rem; font-weight:900; margin-bottom:10px; margin-top:0; color:#0f172a; font-family: 'Outfit', sans-serif;">🧾 Libro Mayor (Ventas)</h3>
+            <div id="audit-logs-container" class="tx-list light-tx-list" style="max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+
+        <div style="background:#ffffff; padding:15px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #eab308;"></div>
+            <h3 style="font-size:1.1rem; font-weight:900; margin-bottom:15px; margin-top:0; color:#0f172a; font-family: 'Outfit', sans-serif;">📒 Mis Deudores</h3>
+            <div id="adm-deudores-list" style="max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+
+        <h3 style="font-size:1.1rem; font-weight:900; margin-bottom:15px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">📍 Rastreo GPS en Vivo</h3>
+        <div id="adm-gps" style="background:#ffffff; padding:15px; text-align:center; margin-bottom:25px; border-radius:20px; border:1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
+            <p style="color:#64748b; font-size:0.85rem; padding: 20px 0;">El chofer debe encender el GPS (Botón superior).</p>
+        </div>
+
+        <div style="background:#ffffff; padding:25px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #0284c7, #0ea5e9);"></div>
+            <h3 style="margin-bottom:20px; margin-top:0; font-size:1.2rem; font-weight:900; color:#0f172a; font-family: 'Outfit', sans-serif;">📦 Reposición de Inventario</h3>
+            
+            <div style="display:flex; align-items:center; margin-bottom:10px;">
+                <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
+                <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
+            </div>
+            <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
+            <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
+            <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock Cargado">
+            
+            <select id="add-unit" class="input-light-admin">
+                <option value="Unid">Unidades</option>
+                <option value="Kg">Kilogramos</option>
+            </select>
+            
+            <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; margin-top:10px; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">GUARDAR EN INVENTARIO</button>
+            
+            <div id="adm-inventory-list" style="margin-top: 20px; max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let dbState = { inventory:[], users:[], clients:[], finances:{}, logs:[], chart_data:{}, last_gps: null };
+        let cUser = "", cPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
+        let pendingTransferData = null, isPaywallUpload = false;
+        let tempFiadoAmount = 0;
+        
+        let lastCalculatedQty = 1;
+        window.gpsActive = false;
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.get('status') === 'success') { alert("✅ ¡Pago recibido exitosamente vía Ualá! Tu cuenta ha sido renovada. Ingresá nuevamente."); window.history.replaceState({}, document.title, "/"); }
+        function getTucumanDateFE() { return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric' }); }
+        function getTucumanTimeFE() { return new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit' }); }
+
+        function normCode(c) {
+            if(!c) return "";
+            let str = String(c).toUpperCase().trim();
+            while(str.includes('ART-')) { str = str.replace('ART-', ''); }
+            return str.trim();
+        }
+
+        // ==========================================
+        // MANEJO DE CACHÉ LOCAL
+        // ==========================================
+        function saveLocalLogs(log) {
+            try {
+                let existing = JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]');
+                let isDuplicate = existing.some(l => l.time === log.time && l.amount === log.amount && l.type === log.type);
+                if(!isDuplicate) { existing.unshift(log); localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(existing.slice(0, 50))); }
+            } catch(e){}
+        }
+        function getLocalLogs() { try { return JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]'); } catch(e){ return []; } }
+        function saveLocalClients(clientList) { try { localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(clientList)); } catch(e){} }
+        function getLocalClients() { try { return JSON.parse(localStorage.getItem('ruta38_clients_' + cUser) || '[]'); } catch(e){ return []; } }
+        function saveLocalInventory(inv) { try { localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(inv)); } catch(e){} }
+        function getLocalInventory() { try { return JSON.parse(localStorage.getItem('ruta38_inv_' + cUser) || '[]'); } catch(e){ return []; } }
+        function getLocalDeletedProducts() { try { return JSON.parse(localStorage.getItem('ruta38_del_prods_' + cUser) || '[]'); } catch(e){ return []; } }
+        function saveLocalDeletedProducts(arr) { localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); }
+
+        socket.on('alert', (msg) => { alert(msg); });
+        socket.on('force_sync', () => { socket.emit('init_session', { local: cUser }); });
+
+        function updateDaysUI(days) { 
+            const lblChofer = document.getElementById('lbl-days-chofer');
+            const lblAdmin = document.getElementById('lbl-days-admin');
+            if(lblChofer) { if(days <= 3) { lblChofer.innerHTML = `⚠️ ${days}D`; lblChofer.style.color = "#f43f5e"; lblChofer.style.borderColor = "rgba(225, 29, 72, 0.3)"; lblChofer.style.background = "rgba(225, 29, 72, 0.05)"; } else { lblChofer.innerHTML = `⏳ ${days}D`; lblChofer.style.color = "#10b981"; lblChofer.style.borderColor = "rgba(16, 185, 129, 0.3)"; lblChofer.style.background = "rgba(16, 185, 129, 0.05)"; } }
+            if(lblAdmin) { if(days <= 3) { lblAdmin.innerHTML = `⚠️ ${days} Días`; lblAdmin.style.color = "#f43f5e"; lblAdmin.style.borderColor = "rgba(225, 29, 72, 0.3)"; lblAdmin.style.background = "rgba(225, 29, 72, 0.1)"; } else { lblAdmin.innerHTML = `✅ ${days} Días`; lblAdmin.style.color = "#10b981"; lblAdmin.style.borderColor = "rgba(16, 185, 129, 0.3)"; lblAdmin.style.background = "rgba(16, 185, 129, 0.1)"; } }
+        }
+
+        async function executeLogin() {
+            let local = document.getElementById('login-user').value.trim(), pin = document.getElementById('login-pass').value.trim();
+            if(!local || !pin) return alert("Ingresá tus datos.");
+            let res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local, pin }) });
+            let data = await res.json();
+            if(data.success) { 
+                cUser = data.local; cPin = pin; cPhone = data.phone || ''; document.getElementById('login-pass').value=''; 
+                if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
+                if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
+                
+                if(data.expired || data.daysLeft <= 0) { document.getElementById('paywall-modal').style.display='flex'; } else { updateDaysUI(data.daysLeft); socket.emit('init_session', { local: cUser }); go('view-chofer'); }
+            } else alert("❌ " + data.msg);
+        }
+
+        function go(id) { 
+            document.querySelectorAll('.view-container, #view-chofer').forEach(v=>{ v.classList.remove('active'); v.style.display='none'; }); 
+            let target = document.getElementById(id);
+            if(target) { target.classList.add('active'); target.style.display='flex'; window.scrollTo(0,0); }
+            if(id === 'view-admin') { socket.emit('request_gps', { local: cUser }); }
+        }
+
+        function scrollToRight() { document.getElementById('calc-preview').scrollLeft = 9999; }
+        
+        function handleFontScaling() { 
+            const display = document.getElementById('calc-total'); 
+            const len = display.innerText.length; 
+            display.style.fontSize = len > 8 ? "2rem" : len > 5 ? "2.5rem" : "3.5rem"; 
+        }
+        
+        function evaluateExpression(exp) { if(!exp) return 0; try { return eval(exp.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]$/, '')); } catch(e) { return 0; } }
+        
+        function parseQty(eStr) {
+            if (!eStr) return 1;
+            let normalized = eStr.replace(/×/g, '*');
+            if (normalized.includes('*')) {
+                let parts = normalized.split('*');
+                if (parts.length >= 2 && parts[1].trim() !== "") {
+                    let parsed = parseFloat(parts[1]);
+                    if(!isNaN(parsed) && parsed > 0) return parsed;
+                }
+            }
+            return 1;
+        }
+        
+        function inputCalc(val) { 
+            if(expr.length > 40) return; 
+            if(isEval && !['+','-','×','÷'].includes(val)) { expr = ""; isEval = false; }
+            expr += val; 
+            let dStr = expr.replace(/\*/g, '×').replace(/\//g, '÷'); 
+            document.getElementById('calc-preview').innerText = dStr; scrollToRight(); 
+            let temp = evaluateExpression(expr); 
+            document.getElementById('calc-total').innerText = temp !== undefined ? temp : dStr; 
+            handleFontScaling(); 
+        }
+        
+        function evalCalc() { 
+            lastCalculatedQty = parseQty(expr); 
+            let res = evaluateExpression(expr); 
+            if(res === Infinity) { res = 0; expr = ""; } 
+            document.getElementById('calc-total').innerText = res; 
+            expr = res.toString(); 
+            document.getElementById('calc-preview').innerText = ""; 
+            isEval = true; 
+            handleFontScaling(); 
+        }
+        
+        function deleteCalc() { 
+            if(expr.length > 0) { 
+                expr = expr.slice(0, -1); 
+                let dStr = expr.replace(/\*/g, '×').replace(/\//g, '÷'); 
+                document.getElementById('calc-preview').innerText = dStr; scrollToRight(); 
+                document.getElementById('calc-total').innerText = expr===""?"0":evaluateExpression(expr); 
+                handleFontScaling(); 
+            } 
+        }
+        
+        function clearCalc() { 
+            expr = ""; isEval = false; 
+            let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
+            let delProds = getLocalDeletedProducts();
+            invList = invList.filter(i => !delProds.includes(normCode(i.code)));
+
+            if(invList.length !== 1) { selProd = null; }
+            
+            lastCalculatedQty = 1;
+            document.getElementById('calc-preview').innerText = ""; 
+            document.getElementById('calc-total').innerText = "0"; 
+            
+            renderMainScreenProduct();
+            handleFontScaling(); 
+        }
+
+        // ==========================================
+        // LA NUEVA MAGIA DEL CATÁLOGO DE PRODUCTOS
+        // ==========================================
+        window.renderCatalogModal = function() {
+            let listContainer = document.getElementById('catalogo-list-container');
+            if(!listContainer) return;
+
+            let searchTerm = (document.getElementById('search-catalog') ? document.getElementById('search-catalog').value.toLowerCase() : '');
+            let html = '';
+
+            let invList = [];
+            if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
+            else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
+            
+            let delProds = getLocalDeletedProducts();
+            invList = invList.filter(i => !delProds.includes(normCode(i.code)));
+
+            let uniqueInv = [];
+            let seenCodes = new Set();
+            invList.forEach(i => {
+                let clean = normCode(i.code);
+                i.code = 'ART-' + clean; 
+                if(!seenCodes.has(clean)) {
+                    seenCodes.add(clean);
+                    uniqueInv.push(i);
+                }
+            });
+            
+            invList = uniqueInv;
+            
+            // Ordenar por número
+            invList.sort((a,b) => {
+                let numA = parseInt(normCode(a.code)) || 0;
+                let numB = parseInt(normCode(b.code)) || 0;
+                return numA - numB;
+            });
+
+            let filtered = invList.filter(i => {
+                if(!searchTerm) return true;
+                return String(i.name).toLowerCase().includes(searchTerm) || String(i.code).toLowerCase().includes(searchTerm);
+            });
+
+            if(filtered.length > 0) {
+                filtered.forEach(i => {
+                    let pStock = parseFloat(i.stock) || 0;
+                    let pPrice = parseFloat(i.price) || 0;
+                    let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
+                    
+                    html += `
+                    <div style="background:#ffffff; border-radius:14px; padding:15px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:0.2s;" onclick="seleccionarDesdeCatalogo('${i.code}','${i.name}',${pPrice},'${i.measure_unit}')">
+                        <div>
+                            <div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif;">${i.code}</div>
+                            <div style="color:#475569; font-size:0.95rem; font-weight:600; margin-top:2px;">${i.name}</div>
+                            <div style="color:#0ea5e9; font-size:1.05rem; font-weight:900; margin-top:6px;">$${pPrice} <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">/ ${i.measure_unit}</span></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">Stock</div>
+                            <div style="font-weight:900; color:#10b981; font-size:1.6rem; font-family:'Outfit',sans-serif; line-height:1;">${stockDisplay}</div>
+                        </div>
+                    </div>`;
+                });
+            } else {
+                html = '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No se encontraron artículos.</div>';
+            }
+
+            listContainer.innerHTML = html;
+        }
+
+        window.seleccionarDesdeCatalogo = function(code, name, price, unit) {
+            selProd = { code, name, price, unit };
+            lastCalculatedQty = 1;
+            document.getElementById('catalogo-modal').style.display='none';
+            if(document.getElementById('search-catalog')) document.getElementById('search-catalog').value = '';
+            
+            renderMainScreenProduct();
+            
+            expr = ""; isEval = false; 
+            document.getElementById('calc-preview').innerText = ""; 
+            document.getElementById('calc-total').innerText = "0"; 
+            inputCalc(price.toString()); 
+            inputCalc('×'); 
+            document.getElementById('calc-preview').innerText = `${code} - ${name} | $${price} × `; 
+        }
+
+        window.renderMainScreenProduct = function() {
+            let listChofer = document.getElementById('chofer-product-list');
+            if(!listChofer) return;
+
+            if (selProd) {
+                listChofer.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:#f0f9ff; border:2px solid #0ea5e9; border-radius:14px; box-shadow:0 4px 10px rgba(14, 165, 233, 0.1);">
+                    <div style="flex:1;">
+                        <div style="font-weight:900; color:#0369a1; font-family:'Outfit',sans-serif; font-size:1.2rem; line-height:1.1; margin-bottom:2px;">${selProd.code}</div>
+                        <div style="color:#0f172a; font-size:0.9rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 150px;">${selProd.name}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="color:#0284c7; font-size:1.2rem; font-weight:900; font-family:'Outfit',sans-serif;">$${selProd.price}</div>
+                        <button onclick="document.getElementById('catalogo-modal').style.display='flex'; renderCatalogModal();" style="background:#0f172a; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:800; font-size:0.75rem; font-family:'Outfit',sans-serif; text-transform:uppercase; box-shadow:0 4px 10px rgba(0,0,0,0.2);">CAMBIAR</button>
+                    </div>
+                </div>`;
+            } else {
+                listChofer.innerHTML = `
+                <button onclick="document.getElementById('catalogo-modal').style.display='flex'; renderCatalogModal();" style="width:100%; background:#ffffff; border:2px dashed #cbd5e1; color:#475569; padding:18px; border-radius:14px; font-weight:900; font-size:1.1rem; font-family:'Outfit',sans-serif; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); cursor:pointer;"><span style="font-size:1.4rem;">📦</span> BUSCAR ARTÍCULO</button>`;
+            }
+        }
+
+        const updateClientDebtLocal = (name, amount, wa) => {
+            if(!dbState.clients) dbState.clients = [];
+            let client = dbState.clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+            if(client) { 
+                let currentDebt = Math.abs(parseFloat(client.debt) || 0);
+                client.debt = currentDebt + amount; 
+                if (client.debt < 0) client.debt = 0; 
+            } 
+            else { 
+                dbState.clients.push({ name: name, whatsapp: wa, debt: Math.max(0, amount) }); 
+            }
+            saveLocalClients(dbState.clients);
+        };
+
+        function submitSale(method) {
+            let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText);
+            if(val <= 0) return alert("Ingresá un monto mayor a 0");
+            
+            let currentQty = parseQty(expr);
+            let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
+            let codeStr = selProd ? selProd.code : 'VARIOS'; 
+            let desc = `Venta de ${finalQty}x ${codeStr}`;
+
+            let newLog = { type: 'VENTA', method: method, amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: desc };
+            saveLocalLogs(newLog);
+            if(!dbState.logs) dbState.logs = [];
+            dbState.logs.unshift(newLog);
+
+            if (selProd && codeStr !== 'VARIOS') {
+                let item = dbState.inventory.find(i => normCode(i.code) === normCode(codeStr));
+                if (item) {
+                    item.stock = (parseFloat(item.stock) || 0) - finalQty;
+                }
+                saveLocalInventory(dbState.inventory);
+            }
+
+            renderAllData(); 
+            
+            socket.emit('process_sale', { 
+                local: cUser, actor: cUser || 'Chofer', type: 'SALE', code: codeStr, totalAmount: val, method: method, qty: finalQty, clientName: 'N/A', clientPhone: 'N/A', description: desc
+            });
+            
+            showToast("Venta guardada"); 
+            clearCalc();
+        }
+
+        function abrirModalFiado() {
+            let val = evaluateExpression(expr);
+            if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText);
+            if(val <= 0) return alert("❌ Calculá el monto a fiar o cobrar primero en la caja.");
+            
+            tempFiadoAmount = val;
+            document.getElementById('fiado-monto-text').innerText = `💰 MONTO: $${val.toLocaleString('es-AR')}`;
+            document.getElementById('new-client-name').value = '';
+            document.getElementById('new-client-wa').value = '';
+            document.getElementById('search-client').value = '';
+            
+            renderFiadoClients();
+            document.getElementById('fiado-modal').style.display = 'block';
+        }
+
+        function crearNuevoCliente() {
+            let name = document.getElementById('new-client-name').value.trim();
+            let wa = document.getElementById('new-client-wa').value.trim();
+            if(!name) return alert("Ingresá un nombre completo.");
+            
+            if(!dbState.clients) dbState.clients = [];
+            let exists = dbState.clients.find(c => c.name.toLowerCase() === name.toLowerCase());
+            if(!exists) {
+                dbState.clients.push({ name: name, whatsapp: wa, debt: 0 });
+                saveLocalClients(dbState.clients);
+                showToast("Cliente agregado a la libreta");
+            } else {
+                alert("Ese cliente ya existe en la lista.");
+            }
+            document.getElementById('new-client-name').value = '';
+            document.getElementById('new-client-wa').value = '';
+            renderFiadoClients();
+        }
+
+        function renderFiadoClients() {
+            let listContainer = document.getElementById('fiado-clients-list');
+            if(!listContainer) return;
+            
+            let searchTerm = document.getElementById('search-client').value.toLowerCase();
+            let html = '';
+            
+            let cliList = [];
+            if (Array.isArray(dbState.clients)) { cliList = dbState.clients; } 
+            else if (dbState.clients && typeof dbState.clients === 'object') { cliList = Object.values(dbState.clients); }
+            
+            cliList.sort((a,b) => {
+                let debtA = Math.abs(parseFloat(a.debt) || 0);
+                let debtB = Math.abs(parseFloat(b.debt) || 0);
+                if (debtB !== debtA) return debtB - debtA;
+                return a.name.localeCompare(b.name);
+            });
+
+            cliList.forEach(c => {
+                if(searchTerm && !c.name.toLowerCase().includes(searchTerm)) return;
+                
+                let pDebt = Math.abs(parseFloat(c.debt) || 0);
+                let waText = (c.whatsapp && String(c.whatsapp).trim().length > 5) ? c.whatsapp : 'Sin número';
+                
+                html += `
+                <div style="background:#ffffff; border-radius:16px; padding:15px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                        <div>
+                            <div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif; text-transform:uppercase;">${c.name}</div>
+                            <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">📱 ${waText}</div>
+                        </div>
+                        <div style="font-weight:900; font-size:1.4rem; color:#0369a1; font-family:'Outfit',sans-serif;">$${pDebt.toLocaleString('es-AR')}</div>
+                    </div>
+                    
+                    <!-- CAJA 1: FIAR -->
+                    <div style="background:#fef2f2; border: 1px dashed #f87171; border-radius:12px; padding:10px; margin-bottom:8px;">
+                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #b91c1c; text-transform: uppercase; text-align:center;">¿Va a fiar?</p>
+                        <button style="width:100%; background:#ef4444; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.95rem; box-shadow:0 4px 10px rgba(239,68,68,0.3); cursor:pointer;" onclick="submitFiado('FIAR', '${c.name}', '${c.whatsapp}')">🔴 SUMAR DEUDA</button>
+                    </div>
+
+                    <!-- CAJA 2: PAGAR -->
+                    <div style="background:#ecfdf5; border: 1px dashed #34d399; border-radius:12px; padding:10px;">
+                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #047857; text-transform: uppercase; text-align:center;">¿Viene a pagar?</p>
+                        <div style="display:flex; gap:8px;">
+                            <button style="flex:1; background:#10b981; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(16,185,129,0.3); cursor:pointer;" onclick="submitFiado('COBRO_EFECTIVO', '${c.name}', '${c.whatsapp}')">💵 EFECTIVO</button>
+                            <button style="flex:1; background:#0ea5e9; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(14,165,233,0.3); cursor:pointer;" onclick="submitFiado('COBRO_TRANSF', '${c.name}', '${c.whatsapp}')">🏦 TRANSF</button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            
+            listContainer.innerHTML = html || '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No hay clientes en la lista. Creá uno arriba.</div>';
+        }
+
+        function renderAllData() {
+            let adminInvHtml = '';
+            try {
+                let invList = [];
+                if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
+                else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
+                
+                let delProds = getLocalDeletedProducts();
+                invList = invList.filter(i => !delProds.includes(normCode(i.code)));
+
+                let uniqueInv = [];
+                let seenCodes = new Set();
+                
+                invList.forEach(i => {
+                    let clean = normCode(i.code);
+                    i.code = 'ART-' + clean; 
+                    
+                    if(!seenCodes.has(clean)) {
+                        seenCodes.add(clean);
+                        uniqueInv.push(i);
+                    }
+                });
+                
+                invList = uniqueInv; 
+
+                if(invList.length > 0) {
+                    invList.forEach(i => {
+                        let pStock = parseFloat(i.stock) || 0;
+                        let pPrice = parseFloat(i.price) || 0;
+                        let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
+                        
+                        adminInvHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:12px; border-radius:12px; margin-top:10px; border:1px solid #e2e8f0;"><div><div style="color:#0f172a; font-weight:800; font-family:'Outfit',sans-serif;">${i.code} - ${i.name}</div><div style="color:#0ea5e9; font-size:0.85rem; font-weight:600;">$${pPrice} / ${i.measure_unit}</div></div><div style="text-align:right; display:flex; gap:12px; align-items:center;"><div style="color:#10b981; font-weight:900; font-size:1.2rem; font-family:'Outfit',sans-serif;">${stockDisplay}</div><button onclick="eliminarProducto('${i.code}')" style="background:#ffe4e6; border:none; border-radius:8px; color:#e11d48; padding:6px 12px; cursor:pointer;">🗑️</button></div></div>`;
+                    });
+
+                    if(invList.length === 1 && !selProd) {
+                        selProd = { code: invList[0].code, name: invList[0].name, price: parseFloat(invList[0].price), unit: invList[0].measure_unit };
+                        
+                        expr = ""; isEval = false; 
+                        document.getElementById('calc-preview').innerText = ""; 
+                        document.getElementById('calc-total').innerText = "0"; 
+                        inputCalc(selProd.price.toString()); 
+                        inputCalc('×'); 
+                        document.getElementById('calc-preview').innerText = `${selProd.code} - ${selProd.name} | $${selProd.price} × `; 
+                    }
+                }
+            } catch(e) { console.error("Error al renderizar el inventario", e); }
+            
+            renderMainScreenProduct();
+            
+            let listAdmin = document.getElementById('adm-inventory-list');
+            if(listAdmin) listAdmin.innerHTML = adminInvHtml || '<div style="text-align:center; padding:15px; color:#64748b; font-size:0.85rem; font-weight:600;">Sin stock cargado.</div>';
+
+            let deudoresHtml = '';
+            try {
+                let cliList = [];
+                if (Array.isArray(dbState.clients)) { cliList = dbState.clients; } 
+                else if (dbState.clients && typeof dbState.clients === 'object') { cliList = Object.values(dbState.clients); }
+
+                if(cliList.length > 0) {
+                    let owes = cliList.filter(c => Math.abs(parseFloat(c.debt) || 0) > 0); 
+                    
+                    let totalFia = owes.reduce((acc, c) => acc + Math.abs(parseFloat(c.debt) || 0), 0);
+                    if(document.getElementById('adm-fiado')) document.getElementById('adm-fiado').innerText = `$${totalFia.toLocaleString('es-AR')}`;
+                    
+                    if(owes.length > 0) { 
+                        owes.forEach(c => { 
+                            let pDebt = Math.abs(parseFloat(c.debt) || 0);
+                            let waText = (c.whatsapp && String(c.whatsapp).trim().length > 5) ? c.whatsapp : 'Falta número'; 
+                            let waColor = waText === 'Falta número' ? '#e11d48' : '#d97706'; 
+                            
+                            deudoresHtml += `<div style="background:#ffffff; padding:18px; border-radius:16px; margin-bottom:12px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02);"><div><div style="font-weight:900; color:#0f172a; font-size:1.15rem; text-transform:uppercase; letter-spacing: 0.5px; font-family:'Outfit',sans-serif;">${c.name}</div><div style="font-size:0.85rem; color:${waColor}; font-weight:800; cursor:pointer; margin-top:6px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 8px; display:inline-block;" onclick="editWa('${c.name}')">📱 ${waText}</div></div><div style="text-align:right;"><div style="font-weight:900; font-size:1.3rem; color:#e11d48; margin-bottom:8px; font-family:'Outfit',sans-serif;">$${pDebt.toLocaleString('es-AR')}</div><div style="display:flex; gap:8px; justify-content:flex-end;"><button onclick="eliminarDeudor('${c.name}')" style="background:#ffe4e6; border:1px solid #fda4af; color:#e11d48; border-radius:10px; padding:6px 12px; font-size:1rem; cursor:pointer;">🗑️</button><button onclick="enviarRecordatorio('${c.name}', ${pDebt}, '${c.whatsapp}')" style="background:#10b981; border:none; border-radius:10px; padding:6px 14px; font-weight:800; font-size:0.85rem; color:white; cursor:pointer; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">Cobrar</button></div></div></div>`; 
+                        }); 
+                    } else { deudoresHtml = '<p style="color:#64748b; font-size:0.9rem; font-weight: 600; text-align:center;">No hay deudas activas.</p>'; }
+                } else { 
+                    if(document.getElementById('adm-fiado')) document.getElementById('adm-fiado').innerText = "$0"; 
+                    deudoresHtml = '<p style="color:#64748b; font-size:0.9rem; font-weight: 600; text-align:center;">No hay clientes en la libreta.</p>'; 
+                }
+            } catch(e) {}
+            
+            let admDeu = document.getElementById('adm-deudores-list');
+            if(admDeu) admDeu.innerHTML = deudoresHtml;
+
+            let adminLogsArray = [], choferLogsArray = [];
+            let calcCash = 0, calcTransf = 0;
+
+            try {
+                let combinedLogs = [...getLocalLogs(), ...(dbState.logs || [])];
+                let uniqueLogs = combinedLogs.filter((v,i,a)=>a.findIndex(t=>(t.time === v.time && t.amount === v.amount && t.type === v.type))===i).slice(0, 80);
+                
+                dbState.logs = uniqueLogs;
+
+                uniqueLogs.forEach(l => {
+                    let pAmt = parseFloat(l.amount) || 0;
+                    let typeDisplay = l.type ? l.type.toUpperCase() : 'VENTA';
+                    let methodStr = (l.method || '').toUpperCase();
+                    
+                    if (typeDisplay !== 'SISTEMA' && (!l.description || !String(l.description).toLowerCase().includes('cierre'))) {
+                        if (methodStr === 'EFECTIVO' || methodStr === 'DEBITO') {
+                            calcCash += pAmt; 
+                        } else if (methodStr === 'TRANSFERENCIA') {
+                            calcTransf += pAmt;
+                        }
+                    }
+                    
+                    let amtColor = '#10b981'; 
+                    if (typeDisplay === 'COBRO' || methodStr === 'EFECTIVO' || methodStr === 'TRANSFERENCIA') {
+                        if (typeDisplay !== 'SALIDA') amtColor = '#10b981'; 
+                    }
+                    if (methodStr === 'FIADO') amtColor = '#0ea5e9'; 
+                    if (typeDisplay === 'SALIDA') amtColor = '#e11d48'; 
+                    
+                    if(typeDisplay === 'SISTEMA' || (l.description && String(l.description).toLowerCase().includes('cierre'))) {
+                        amtColor = '#64748b'; 
+                    }
+                    
+                    let icon = methodStr === 'EFECTIVO' ? '💵' : methodStr === 'TRANSFERENCIA' ? '🏦' : methodStr === 'FIADO' ? '📝' : typeDisplay === 'SISTEMA' ? '💰' : '💸';
+                    let descColor = '#1e293b'; 
+                    
+                    let descStr = l.description ? String(l.description) : (typeDisplay === 'VENTA' || typeDisplay === 'SALE' ? 'Venta registrada' : "Registro Vacío"); 
+                    
+                    let amt = pAmt === 0 ? '-' : `$${Math.abs(pAmt).toLocaleString('es-AR')}`; let receiptBtn = '';
+                    if(l.foto_base64 && l.foto_base64.length > 50) { receiptBtn = `<div style="margin-top:10px;"><button onclick="openReceipt('${l.foto_base64}')" style="background:#f1f5f9; border: 1px solid #cbd5e1; color:#0f172a; padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.75rem; cursor:pointer;">📸 VER TICKET</button></div>`; }
+                    let methodDisplay = methodStr === 'TRANSFERENCIA' ? 'TRANSF.' : methodStr;
+                    
+                    let row = `<div class="log-row"><div class="log-left">${icon}</div><div class="log-info"><div class="log-type" style="color:#64748b;">${typeDisplay}</div><div class="log-date" style="color:#94a3b8;">${l.date || ''} ${l.time || ''}</div><div class="log-desc" style="color:${descColor}; font-weight:800;">${descStr}${receiptBtn}</div></div><div class="log-right"><div class="log-amt" style="color:${amtColor};">${amt}</div><div class="log-method" style="color:#94a3b8;">${methodDisplay}</div></div></div>`;
+                    
+                    adminLogsArray.push(row); 
+                    if(typeDisplay !== 'SISTEMA') { choferLogsArray.push(row); }
+                });
+            } catch(e) {}
+
+            if(document.getElementById('adm-cash')) document.getElementById('adm-cash').innerText = `$${calcCash.toLocaleString('es-AR')}`; 
+            if(document.getElementById('adm-transf')) document.getElementById('adm-transf').innerText = `$${calcTransf.toLocaleString('es-AR')}`;
+            
+            let admLogs = document.getElementById('audit-logs-container');
+            if(admLogs) admLogs.innerHTML = adminLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600;">Sin movimientos.</div>';
+            
+            let chfLogs = document.getElementById('chofer-logs-modal-container');
+            if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
+            
+            try { 
+                if(dbState.last_gps && document.getElementById('adm-gps') && dbState.last_gps.lat) {
+                    document.getElementById('adm-gps').innerHTML = `<p style="color:#0f172a; margin-bottom:15px; font-size:0.85rem; font-weight:800; background:#f8fafc; border:1px solid #e2e8f0; padding: 10px; border-radius: 12px; display:inline-block;">📡 ÚLTIMA POSICIÓN: ${dbState.last_gps.time}</p><iframe width="100%" height="250" src="https://maps.google.com/maps?q=${dbState.last_gps.lat},${dbState.last_gps.lon}&hl=es&z=16&output=embed" frameborder="0" style="border-radius:14px; border: 1px solid #e2e8f0;"></iframe>`; 
+                }
+            } catch(e) {}
+        }
+
+        window.isSyncPaused = false;
+        
+        socket.on('sync_data', (d) => { 
+            if(window.isSyncPaused) return; 
+            
+            let currentGps = dbState.last_gps;
+            let currentLogs = dbState.logs || [];
+            let currentClients = getLocalClients();
+            let currentInv = getLocalInventory();
+            
+            dbState = d; 
+            
+            if(!dbState.last_gps && currentGps) { dbState.last_gps = currentGps; }
+            if(!dbState.logs || dbState.logs.length === 0) { dbState.logs = currentLogs; } 
+            else if (currentLogs.length > dbState.logs.length) {
+                let missing = currentLogs.filter(cl => !dbState.logs.some(dl => dl.time === cl.time && dl.amount === cl.amount));
+                dbState.logs = [...missing, ...dbState.logs];
+            }
+
+            if(!dbState.clients || dbState.clients.length === 0) { 
+                dbState.clients = currentClients; 
+            } else {
+                currentClients.forEach(cc => {
+                    let serverClient = dbState.clients.find(dc => dc.name.toLowerCase() === cc.name.toLowerCase());
+                    if(!serverClient) {
+                        dbState.clients.push(cc);
+                    } else if (Math.abs(serverClient.debt) === 0 && Math.abs(cc.debt) > 0) {
+                        serverClient.debt = Math.abs(cc.debt);
+                    }
+                });
+            }
+            
+            if(dbState.clients) {
+                dbState.clients.forEach(c => c.debt = Math.abs(parseFloat(c.debt) || 0));
+            }
+            saveLocalClients(dbState.clients);
+
+            if(!dbState.inventory || dbState.inventory.length === 0) {
+                dbState.inventory = currentInv;
+            } else {
+                currentInv.forEach(ci => {
+                    let localCode = normCode(ci.code);
+                    let serverItem = dbState.inventory.find(di => normCode(di.code) === localCode);
+                    
+                    if(!serverItem) {
+                        dbState.inventory.push(ci);
+                    } else {
+                        let localStock = parseFloat(ci.stock) || 0;
+                        let serverStock = parseFloat(serverItem.stock) || 0;
+                        if (localStock < serverStock) {
+                            serverItem.stock = localStock;
+                        }
+                    }
+                });
+                saveLocalInventory(dbState.inventory);
+            }
+            
+            renderAllData(); 
+            if(document.getElementById('fiado-modal').style.display === 'block') { renderFiadoClients(); }
+        });
+
+        socket.on('gps_updated', (data) => { if(data.local === cUser) { dbState.last_gps = data; renderAllData(); }});
+        socket.on('update_gps', (data) => { if(data.local === cUser) { dbState.last_gps = data; renderAllData(); }});
+        socket.on('request_gps', (data) => { if(data.local === cUser && window.gpsActive) { toggleGps(true); }});
+        
+        socket.on('new_log', (log) => { if(log.local === cUser) { saveLocalLogs(log); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(log); renderAllData(); }});
+        
+        function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
+        async function registerAccount() { let local = document.getElementById('reg-local').value.trim(), pin = document.getElementById('reg-pin').value.trim(), prov = document.getElementById('reg-prov').value, phone = document.getElementById('reg-phone').value.trim(); if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); let res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local, pin, phone, prov }) }); let data = await res.json(); if(data.success) { alert("¡Cuenta Creada!"); document.getElementById('login-user').value = local.replace('*','').trim(); window.scrollTo({top: 0, behavior: 'smooth'}); } else alert(data.msg); }
+        async function pagarConUala() { try { let res = await fetch('/api/checkout_uala', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local: cUser }) }); let data = await res.json(); if(data.success) { window.location.href = data.link; } else { alert(data.msg); } } catch(e) { alert("Error de conexión con Ualá"); } }
+        function verifyAdminPin() { let p = document.getElementById('pin-input').value; if(p === cPin || p === "1234") { document.getElementById('pin-modal').style.display='none'; document.getElementById('pin-input').value=''; go('view-admin'); } else alert("❌ Clave Incorrecta."); }
+        function openReceipt(base64str) { document.getElementById('receipt-img').src = base64str; document.getElementById('receipt-modal').style.display = 'flex'; }
+        
+        function eliminarDeudor(name) { 
+            if(confirm(`¿ELIMINAR deuda de ${name}?`)) {
+                dbState.clients = dbState.clients.filter(c => c.name !== name);
+                saveLocalClients(dbState.clients);
+                renderAllData();
+                socket.emit('delete_client', { local: cUser, clientName: name, actor: cUser || 'Dueño' }); 
+            }
+        }
+
+        function editWa(name) { let nuevo = prompt(`WhatsApp para ${name}:`); if(nuevo) socket.emit('update_client_wa', { local: cUser, clientName: name, whatsapp: nuevo.trim() }); }
+        
+        function enviarRecordatorio(nombre, deuda, wa) { 
+            if(!wa || wa === '' || wa === 'null' || wa === 'undefined') return alert("❌ Este cliente no tiene un número registrado."); 
+            let numLimpio = String(wa).replace(/[^0-9]/g, ''); 
+            if (numLimpio.length === 10) numLimpio = '549' + numLimpio; 
+            let msg = `Hola, buen día. Te escribimos de ${cUser}, pasamos a recordarte que por la semana tenés una cuenta pendiente a pagar de *$${parseFloat(deuda).toLocaleString('es-AR')}*. ¡Muchas gracias!`; 
+            window.open(`https://wa.me/${numLimpio}?text=${encodeURIComponent(msg)}`, '_blank'); 
+        }
+        
+        function triggerExpenseModal() { let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); if(val <= 0) return alert("Calculá el gasto primero en la caja."); document.getElementById('exp-monto-text').innerText = `$${val.toLocaleString('es-AR')}`; document.getElementById('expense-modal').style.display = 'flex'; }
+        
+        function submitExpense() { 
+            let rsn = document.getElementById('exp-rsn').value.trim() || 'Gasto Operativo'; 
+            let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
+            
+            let newLog = { type: 'SALIDA', method: 'EFECTIVO', amount: -val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: rsn };
+            saveLocalLogs(newLog);
+            if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
+
+            socket.emit('process_expense', { local: cUser, actor: cUser, amount: val, reason: rsn }); 
+            document.getElementById('expense-modal').style.display = 'none'; document.getElementById('exp-rsn').value = ''; clearCalc(); showToast("Salida Registrada"); 
+        }
+        
+        function abrirSheetTransfVenta() { 
+            let val = evaluateExpression(expr); 
+            if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
+            if(val <= 0) return alert("❌ Calculá el monto de la transferencia primero en la caja."); 
+            
+            let currentQty = parseQty(expr);
+            let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
+            
+            pendingTransferData = { 
+                type: 'SALE', 
+                method: 'TRANSFERENCIA', 
+                amount: val,
+                product: selProd,
+                qty: finalQty
+            }; 
+            
+            document.getElementById('sheet-overlay').classList.add('show'); 
+            document.getElementById('native-bottom-sheet').classList.add('show'); 
+        }
+        function abrirSheetTransfCobro() { document.getElementById('fiado-modal').style.display='none'; document.getElementById('sheet-overlay').classList.add('show'); document.getElementById('native-bottom-sheet').classList.add('show'); }
+        function cerrarSheet() { document.getElementById('sheet-overlay').classList.remove('show'); document.getElementById('native-bottom-sheet').classList.remove('show'); }
+        function elegirCamara() { document.getElementById('foto-input-camara').click(); setTimeout(() => { cerrarSheet(); }, 500); }
+        function elegirGaleria() { document.getElementById('foto-input-galeria').click(); setTimeout(() => { cerrarSheet(); }, 500); }
+        function abrirCamaraPaywall() { isPaywallUpload = true; document.getElementById('foto-input-camara').click(); }
+        
+        function processTransferWithPhoto(e) { 
+            const f = e.target.files[0]; 
+            if(!f) { 
+                if(!isPaywallUpload && confirm("⚠️ ¿Registrar IGUAL la transferencia SIN comprobante?")) emitPendingTransferHTTP(null); 
+                isPaywallUpload = false; return; 
+            } 
+            document.getElementById('calc-preview').innerText = "⏳ COMPRIMIENDO FOTO..."; 
+            const r = new FileReader(); 
+            r.readAsDataURL(f); 
+            r.onload = ev => { 
+                const img = new Image(); 
+                img.src = ev.target.result; 
+                img.onload = () => { 
+                    const c = document.createElement('canvas'); 
+                    let targetWidth = 320; 
+                    let scale = targetWidth / img.width; 
+                    c.width = targetWidth; 
+                    c.height = img.height * scale; 
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
+                    let base64 = c.toDataURL('image/jpeg', 0.20); 
+                    if (isPaywallUpload) { ejecutarValidacionPaywallIA(base64); } 
+                    else { emitPendingTransferHTTP(base64); } 
+                } 
+                img.onerror = () => { emitPendingTransferHTTP(null); }
+            } 
+        }
+        
+        async function ejecutarValidacionPaywallIA(base64str) { document.getElementById('ia-status').style.display = 'block'; try { let r = await fetch('/api/validate_payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ local: cUser, fotoBase64: base64str }) }); let d = await r.json(); document.getElementById('ia-status').style.display = 'none'; if(d.success) { alert("✅ " + d.msg); document.getElementById('paywall-modal').style.display = 'none'; socket.emit('init_session', { local: cUser }); go('view-chofer'); } else { alert("❌ " + d.msg); } } catch(e) { alert("❌ Falló el enlace con la IA."); document.getElementById('ia-status').style.display = 'none'; } isPaywallUpload = false; document.getElementById('foto-input-camara').value = ""; }
+        
+        async function emitPendingTransferHTTP(base64str) { 
+            let pData = pendingTransferData || {}; 
+            let val = pData.amount; 
+            if(!val || val <= 0) { 
+                val = evaluateExpression(expr); 
+                if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
+            } 
+            
+            let payload = { 
+                local: cUser, 
+                actor: cUser || 'Chofer', 
+                amount: val, 
+                method: 'TRANSFERENCIA', 
+                receipt: base64str
+            }; 
+            
+            if(pData.type === 'COBRO_TRANSF') { 
+                payload.type = 'FIADO_COBRO'; 
+                payload.clientName = pData.cName || 'CLIENTE'; 
+                payload.clientPhone = pData.cWa || ''; 
+                
+                let newLog = { type: 'COBRO', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${payload.clientName} (TRANSFERENCIA)`, foto_base64: base64str };
+                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
+                updateClientDebtLocal(payload.clientName, -val, payload.clientPhone);
+                renderAllData();
+            } else { 
+                payload.type = 'SALE'; 
+                payload.code = (pData.product && pData.product.code) ? pData.product.code : 'VARIOS'; 
+                payload.qty = pData.qty || 1; 
+                
+                if (pData.product && payload.code !== 'VARIOS') {
+                    let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
+                    let item = invList.find(i => normCode(i.code) === normCode(payload.code));
+                    if (item) {
+                        item.stock = (parseFloat(item.stock) || 0) - payload.qty;
+                    }
+                    dbState.inventory = invList;
+                    saveLocalInventory(dbState.inventory);
+                }
+
+                let newLog = { type: 'VENTA', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${payload.qty}x ${payload.code} (TRANSFERENCIA)`, foto_base64: base64str };
+                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
+            } 
+
+            // CORTAMOS LA CALCULADORA AL INSTANTE
+            clearCalc();
+            showToast("Procesando transferencia...");
+
+            try { 
+                let payloadLimpio = { local: payload.local, actor: payload.actor, amount: payload.amount, method: payload.method, receipt: payload.receipt, type: payload.type };
+                if(payload.type === 'FIADO_COBRO') {
+                    payloadLimpio.amount = -Math.abs(payload.amount);
+                    payloadLimpio.clientName = payload.clientName;
+                    payloadLimpio.clientPhone = payload.clientPhone;
+                } else { 
+                    payloadLimpio.code = payload.code; 
+                    payloadLimpio.qty = payload.qty; 
+                }
+
+                let r = await fetch('/api/submit_transfer', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payloadLimpio) }); 
+                let d = await r.json(); 
+                if(d.success) { 
+                    showToast("Transferencia enviada correctamente"); 
+                    window.isSyncPaused = true;
+                    setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 2000);
+                }
+            } catch(e) { 
+                console.error("Error en transferencia:", e);
+            } 
+            document.getElementById('foto-input-camara').value = ""; document.getElementById('foto-input-galeria').value = ""; pendingTransferData = null; 
+        }
+        
+        function submitFiado(actionType, cName, cWa) { 
+            if(!cName) return;
+            if(actionType === 'FIAR') { 
+                let codeStr = selProd ? selProd.code : 'VARIOS';
+                let currentQty = parseQty(expr);
+                let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
+                
+                let newLog = { type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${finalQty}x ${codeStr} a ${cName} (FIADO)` };
+                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
+                updateClientDebtLocal(cName, tempFiadoAmount, cWa);
+
+                if (selProd && codeStr !== 'VARIOS') {
+                    let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
+                    let item = invList.find(i => normCode(i.code) === normCode(codeStr));
+                    if (item) {
+                        item.stock = (parseFloat(item.stock) || 0) - finalQty;
+                    }
+                    dbState.inventory = invList;
+                    saveLocalInventory(dbState.inventory);
+                }
+
+                renderAllData();
+
+                socket.emit('process_sale', { local: cUser, actor: cUser, code: codeStr, totalAmount: tempFiadoAmount, method: 'FIADO', qty: finalQty, clientName: cName, clientPhone: cWa }); 
+                
+                document.getElementById('fiado-modal').style.display='none'; 
+                showToast("Fiado guardado"); clearCalc(); 
+            } else if(actionType === 'COBRO_EFECTIVO') { 
+                let newLog = { type: 'COBRO', method: 'EFECTIVO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${cName} (EFECTIVO)` };
+                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
+                updateClientDebtLocal(cName, -tempFiadoAmount, cWa);
+                renderAllData();
+
+                socket.emit('process_cobro_deuda', { local: cUser, clientName: cName, clientPhone: cWa, amount: -Math.abs(tempFiadoAmount), actor: cUser, method: 'EFECTIVO' }); 
+                document.getElementById('fiado-modal').style.display='none'; 
+                showToast("Cobro guardado"); clearCalc(); 
+            } else if(actionType === 'COBRO_TRANSF') { 
+                pendingTransferData = { type: 'COBRO_TRANSF', amount: tempFiadoAmount, cName: cName, cWa: cWa }; 
+                abrirSheetTransfCobro(); 
+            } 
+        }
+
+        function toggleGps(force = false) { 
+            let btn = document.getElementById('btn-gps'); 
+            
+            let turningOn = force ? true : !window.gpsActive;
+
+            if(turningOn) { 
+                btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>BUSCANDO...'; 
+                btn.style.borderColor = "#0ea5e9";
+                btn.style.color = "white";
+                btn.style.background = "#0ea5e9";
+                window.gpsActive = true;
+                
+                if(navigator.geolocation) { 
+                    const enviarPosicion = (p) => {
+                        btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
+                        let payload = { local: cUser, actor: cUser, lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() };
+                        socket.emit('update_gps', payload); 
+                        dbState.last_gps = payload; renderAllData();
+                    };
+
+                    navigator.geolocation.getCurrentPosition(enviarPosicion, err => { 
+                        if(!force) alert("⚠️ Activa la Ubicación en tu celular y dale permisos al navegador. (Asegurate de estar usando HTTPS)."); 
+                        btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                        btn.style.borderColor = "#e2e8f0"; btn.style.background = "#ffffff"; btn.style.color = "#1e293b"; window.gpsActive = false;
+                    }, { enableHighAccuracy: true, timeout: 10000 }); 
+                    
+                    if(!window.gpsInterval) { 
+                        window.gpsInterval = setInterval(() => { 
+                            if(window.gpsActive) {
+                                navigator.geolocation.getCurrentPosition(enviarPosicion, err => {}, { enableHighAccuracy: true }); 
+                            }
+                        }, 8000); 
+                    }
+                } else { 
+                    if(!force) alert("Tu celular no soporta GPS."); 
+                    window.gpsActive = false;
+                    btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF';
+                    btn.style.background = "#ffffff"; btn.style.color = "#1e293b";
+                }
+            } else { 
+                btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                btn.style.borderColor = "#e2e8f0"; btn.style.color = "#1e293b"; btn.style.background = "#ffffff";
+                window.gpsActive = false; 
+                clearInterval(window.gpsInterval); 
+                window.gpsInterval = null;
+            } 
+        }
+        
+        function uploadMerchandise() { 
+            let codeVal = document.getElementById('add-code').value.trim(); 
+            let name = document.getElementById('add-name').value.trim(); 
+            let price = document.getElementById('add-price').value.trim(); 
+            let stock = document.getElementById('add-stock').value.trim(); 
+            let unit = document.getElementById('add-unit').value; 
+            
+            if(!codeVal || !name || !price || !stock) return alert("Completá todos los campos."); 
+            
+            let clean = normCode(codeVal);
+            let finalCode = 'ART-' + clean;
+            
+            socket.emit('add_product', { local: cUser, actor: cUser, code: finalCode, name: name, price: price, stock: stock, measure_unit: unit }); 
+            
+            window.isSyncPaused = true;
+            
+            let delProds = getLocalDeletedProducts();
+            saveLocalDeletedProducts(delProds.filter(c => c !== clean));
+
+            let nuevoItem = { code: finalCode, name: name, price: parseFloat(price) || 0, stock: parseFloat(stock) || 0, measure_unit: unit };
+            if(!dbState.inventory) dbState.inventory = [];
+            let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory);
+            
+            let existe = invList.findIndex(i => normCode(i.code) === clean);
+            if(existe >= 0) { invList[existe] = nuevoItem; } else { invList.push(nuevoItem); }
+            
+            dbState.inventory = invList;
+            saveLocalInventory(dbState.inventory); 
+            
+            renderAllData(); 
+            
+            document.getElementById('add-code').value=''; document.getElementById('add-name').value=''; document.getElementById('add-price').value=''; document.getElementById('add-stock').value=''; 
+            showToast("✅ Artículo cargado y enviado al chofer"); 
+            setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 3000);
+        }
+
+        function eliminarProducto(code) { 
+            if(confirm("¿Eliminar artículo " + code + "?")) { 
+                let clean = normCode(code);
+                
+                let delProds = getLocalDeletedProducts();
+                if(!delProds.includes(clean)) { delProds.push(clean); saveLocalDeletedProducts(delProds); }
+                
+                window.isSyncPaused = true;
+                let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
+                dbState.inventory = invList.filter(i => normCode(i.code) !== clean);
+                saveLocalInventory(dbState.inventory); 
+
+                renderAllData();
+                
+                socket.emit('delete_product', { local: cUser, code: code }); 
+                socket.emit('delete_product', { local: cUser, code: clean }); 
+                socket.emit('delete_product', { local: cUser, code: 'ART-' + clean }); 
+                socket.emit('delete_product', { local: cUser, code: 'ART-ART-' + clean }); 
+                
+                setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 2000);
+            } 
+        }
+        
+        function descargarPDFDay() { try { if(!window.jspdf || !window.jspdf.jsPDF) return alert("Error cargando librería PDF."); const { jsPDF } = window.jspdf; const doc = new jsPDF(); let hoy = getTucumanDateFE(); doc.setFontSize(18); doc.text(`Resumen de Turno Activo - ${cUser}`, 14, 20); doc.setFontSize(10); doc.text(`Generado: ${hoy} ${getTucumanTimeFE()}`, 14, 28); let datosTurno = []; for(let i=0; i<dbState.logs.length; i++) { let tx = dbState.logs[i]; let descStr = tx.description ? String(tx.description) : ""; if(descStr.toLowerCase().includes('cierre de caja')) { if (i !== 0) break; } datosTurno.push(tx); } if(datosTurno.length === 0) return alert("No hay transacciones en el turno actual."); let htmlFilas = []; for(let i=0; i<datosTurno.length; i++) { let tx = datosTurno[i]; let descStr = tx.description ? String(tx.description) : ""; htmlFilas.push([ `${tx.time}`, tx.type.toUpperCase(), tx.method.toUpperCase(), descStr, `$${Math.abs(tx.amount).toLocaleString('es-AR')}` ]); } doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}.pdf`); } catch(e) { alert("Error al generar PDF: " + e.message); } }
+        
+        async function closeRegister() { 
+            if(!confirm("¿Cerrar Turno, descargar PDF y enviar reporte por WhatsApp?")) return; 
+            let tEfe = document.getElementById('adm-cash') ? document.getElementById('adm-cash').innerText : '$0'; 
+            let tTra = document.getElementById('adm-transf') ? document.getElementById('adm-transf').innerText : '$0'; 
+            let tFia = document.getElementById('adm-fiado') ? document.getElementById('adm-fiado').innerText : '$0'; 
+            
+            if (dbState.logs && dbState.logs.length > 0) { descargarPDFDay(); } 
+            
+            setTimeout(() => { 
+                document.getElementById('adm-cash').innerText = "$0"; 
+                document.getElementById('adm-transf').innerText = "$0"; 
+                document.getElementById('adm-fiado').innerText = "$0"; 
+                document.getElementById('audit-logs-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>No hay transacciones aún.</p>"; 
+                document.getElementById('chofer-logs-modal-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>Tus ventas aprobadas aparecerán aquí.</p>"; 
+                document.getElementById('calc-total').innerText = "0"; 
+                
+                localStorage.removeItem('ruta38_logs_' + cUser);
+                dbState.logs = [];
+
+                socket.emit('reset_register', { local: cUser, actor: cUser }); 
+                
+                let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
+                window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); 
+            }, 1500); 
+        }
+        
+        function leerCaracteristicasApp() { 
+            // Freno de mano: corta cualquier audio que esté sonando antes de arrancar
+            window.speechSynthesis.cancel();
+            
+            const speech = new SpeechSynthesisUtterance(); 
+            speech.text = "¡Hola! Bienvenidos a Energy, la empresa de tecnología y software líder en este 2026. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores del rubro de bebidas, panaderías, o locales que venden artículos únicos. Llevá el control total de tu negocio de forma sencilla. El sistema te permite cargar todos tus productos. En la calle, la calculadora inteligente hace todo por vos: seleccionás el artículo, marcás las unidades, calcula el total al instante, y te permite cerrar la venta por transferencia o en efectivo. ¿Tenés clientes con cuenta corriente? Contamos con una libreta de fiados digital que se actualiza sola, y un sistema automatizado que envía recordatorios de cobro por WhatsApp con un solo toque. Todo diseñado comercialmente para que administres tu logística y multipliques tus ventas. ¡Sumate al futuro con Ruta 38 Envíos!"; 
+            speech.lang = 'es-AR'; 
+            speech.rate = 1.0; 
+            
+            // Te aseguras de que se limpie la memoria al terminar de hablar
+            speech.onend = function() {
+                console.log("Audio finalizado correctamente.");
+            };
+            
+            window.speechSynthesis.speak(speech); 
+        }
+    </script>
+</body>
+</html>
