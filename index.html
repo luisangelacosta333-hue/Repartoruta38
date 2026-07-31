@@ -7,9 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#fdfdfd">
     <title>Ruta 38 Envíos | Control de Repartos</title>
-    <!-- MANIFEST Y LOGO INYECTADOS DIRECTAMENTE EN EL CÓDIGO (SIN ARCHIVOS EXTRA) -->
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiUnV0YSAzOCBFbnZpb3MiLCJzaG9ydF9uYW1lIjoiUnV0YTM4Iiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZWE1ZTkiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhacFpYZENiM2c5SWpBZ01DQTFNVElnTlRFeUlpQjNhV1IwYUQwaU5URXlJaUJvWldsbmFIUTZJalV4TWlJK1BISmxZM1FnZDJsMGRHZzlJalV4TWlJZ2FHVnBaMmgwSWpJMU1USWlJR1p2Ym5RdGQyVnBaMmgwSWowaVltOXNaQ0krTXpncFBDOXNkbWMrIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwiLCJwdXJwb3NlIjoiYW55IG1hc2thYmxlIn1dfQ==">
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9IiMwZWE1ZTkiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjZmZmIiBmb250LXdlaWdodD0iYm9sZCI+Mzg8L3RleHQ+PC9zdmc+">
+    
+    <!-- Llama al manifest y al logo por separado -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="logo.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -537,7 +538,7 @@
     </div>
 
     <script>
-        // --- CONEXIÓN DIRECTA A SUPABASE (INYECCIÓN DE LLAVES REALES) ---
+        // --- CONEXIÓN DIRECTA A SUPABASE ---
         const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co'; 
         const supabaseKey = 'sb_publishable_xo7-uUQqtWvEWoLGqqlrsg_rxdroLx4';
         const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
@@ -550,8 +551,6 @@
         let lastCalculatedQty = 1;
         window.gpsActive = false;
 
-        const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.get('status') === 'success') { alert("✅ ¡Pago recibido exitosamente vía Ualá! Tu cuenta ha sido renovada. Ingresá nuevamente."); window.history.replaceState({}, document.title, "/"); }
         function getTucumanDateFE() { return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric' }); }
         function getTucumanTimeFE() { return new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit' }); }
 
@@ -584,7 +583,6 @@
             if(lblAdmin) { if(days <= 3) { lblAdmin.innerHTML = `⚠️ ${days} Días`; lblAdmin.style.color = "#f43f5e"; lblAdmin.style.borderColor = "rgba(225, 29, 72, 0.3)"; lblAdmin.style.background = "rgba(225, 29, 72, 0.1)"; } else { lblAdmin.innerHTML = `✅ ${days} Días`; lblAdmin.style.color = "#10b981"; lblAdmin.style.borderColor = "rgba(16, 185, 129, 0.3)"; lblAdmin.style.background = "rgba(16, 185, 129, 0.1)"; } }
         }
 
-        // --- SISTEMA DE REGISTRO DIRECTO CON SUPABASE ---
         async function registerAccount() {
             let local = document.getElementById('reg-local').value.trim();
             let pin = document.getElementById('reg-pin').value.trim();
@@ -594,21 +592,21 @@
             if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); 
             
             try {
-                // Se conecta directo a tu tabla de Supabase llamada 'usuarios'
                 const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, phone: phone, prov: prov }]);
                 
-                if (error) throw error;
+                if (error) {
+                    alert("Error devuelto por Supabase: " + error.message);
+                    return;
+                }
                 
                 alert("¡Cuenta Creada y Aprobada!"); 
                 document.getElementById('login-user').value = local.replace('*','').trim(); 
                 window.scrollTo({top: 0, behavior: 'smooth'}); 
             } catch (err) {
-                alert("Error al guardar en base de datos. Asegurate de tener una tabla llamada 'usuarios' creada en Supabase.");
-                console.error(err);
+                alert("Error de sistema: " + err.message);
             }
         }
 
-        // --- SISTEMA DE LOGIN DIRECTO CON SUPABASE ---
         async function executeLogin() {
             let local = document.getElementById('login-user').value.trim();
             let pin = document.getElementById('login-pass').value.trim();
@@ -616,7 +614,6 @@
             if(!local || !pin) return alert("Ingresá tus datos.");
             
             try {
-                // Lee directo desde tu tabla de Supabase
                 const { data, error } = await _supabase.from('usuarios').select('*').eq('local', local).eq('pin', pin).single();
                 
                 if(error || !data) {
@@ -636,7 +633,7 @@
                 go('view-chofer');
                 
             } catch(err) {
-                alert("❌ Error de conexión con Supabase: " + err.message);
+                alert("❌ Error de conexión: " + err.message);
                 console.error(err);
             }
         }
@@ -857,7 +854,7 @@
             }
 
             renderAllData(); 
-            showToast("Venta guardada (Modo Vercel)"); 
+            showToast("Venta guardada localmente"); 
             clearCalc();
         }
 
@@ -1409,3 +1406,4 @@
     </script>
 </body>
 </html>
+
