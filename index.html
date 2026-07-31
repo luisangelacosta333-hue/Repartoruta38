@@ -630,11 +630,17 @@
                 cPin = pin; 
                 cPhone = data.phone || ''; 
                 
+                // --- SOLUCIÓN: CARGAR DATOS GUARDADOS AL INSTANTE ---
+                dbState.inventory = getLocalInventory();
+                dbState.clients = getLocalClients();
+                dbState.logs = getLocalLogs();
+                
                 document.getElementById('login-pass').value=''; 
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
                 updateDaysUI(30);
+                renderAllData(); // DIBUJAR TODO SIN DEMORAS
                 go('view-chofer');
                 
             } catch(err) {
