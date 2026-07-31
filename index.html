@@ -7,13 +7,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#fdfdfd">
     <title>Ruta 38 Envíos | Control de Repartos</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="logo.png">
+    <!-- MANIFEST Y LOGO INYECTADOS DIRECTAMENTE EN EL CÓDIGO (SIN ARCHIVOS EXTRA) -->
+    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiUnV0YSAzOCBFbnZpb3MiLCJzaG9ydF9uYW1lIjoiUnV0YTM4Iiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwZjE3MmEiLCJ0aGVtZV9jb2xvciI6IiMwZWE1ZTkiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCNGJXeHVjejBpYUhSMGNEb3ZMM2QzZHk1M015NXZjbWN2TWpBd01DOXpkbWNpSUhacFpYZENiM2c5SWpBZ01DQTFNVElnTlRFeUlpQjNhV1IwYUQwaU5URXlJaUJvWldsbmFIUTZJalV4TWlJK1BISmxZM1FnZDJsMGRHZzlJalV4TWlJZ2FHVnBaMmgwSWpJMU1USWlJR1p2Ym5RdGQyVnBaMmgwSWowaVltOXNaQ0krTXpncFBDOXNkbWMrIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwiLCJwdXJwb3NlIjoiYW55IG1hc2thYmxlIn1dfQ==">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9IiMwZWE1ZTkiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjZmZmIiBmb250LXdlaWdodD0iYm9sZCI+Mzg8L3RleHQ+PC9zdmc+">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { 
             --primary-blue: #0284c7; 
@@ -59,9 +62,6 @@
         .btn-premium { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: center; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif;}
         .btn-premium:active { transform: scale(0.96); }
 
-        /* =========================================
-           VISTA CHOFER - TOTALMENTE FIJA Y SIN SCROLL
-           ========================================= */
         #view-chofer { 
             height: 100vh; 
             height: 100dvh; 
@@ -79,7 +79,6 @@
         .pill-btn.blue { background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; border: none; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3); }
         .pill-btn.green-text { color: #10b981; border: 1px solid #10b981; background: rgba(16, 185, 129, 0.05); }
 
-        /* --- DISPLAY CON MÁS AIRE Y NÚMEROS MÁS GRANDES --- */
         .chofer-display { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; min-height: 75px; margin-bottom: 8px; padding: 5px 10px; flex-shrink: 0;}
         .calc-main-light { font-size: 3.5rem; font-weight: 900; color: #0369a1; line-height: 1; letter-spacing: -1px; font-family: 'Outfit', sans-serif; word-break: break-all; transition: font-size 0.2s; }
         .calc-hist-light { font-size: 1.1rem; color: #64748b; font-weight: 600; min-height: 1.4rem; margin-bottom: 4px; }
@@ -88,7 +87,6 @@
         .chofer-btn-white { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 4px; flex: 1; font-weight: 800; font-size: 0.85rem; color: #1e293b; box-shadow: 0 4px 10px rgba(0,0,0,0.03); cursor: pointer; transition: transform 0.1s; font-family: 'Outfit', sans-serif; display: flex; justify-content: center; align-items: center; gap: 5px;}
         .chofer-btn-white:active { transform: scale(0.95); background: #f8fafc; border-color: #cbd5e1; }
 
-        /* NUEVO CONTENEDOR PARA EL ARTÍCULO/BOTÓN CATÁLOGO */
         .product-list-wrapper { flex: 1; min-height: 0; display:flex; flex-direction:column; justify-content:center; padding: 4px 0; margin-bottom: 8px; }
 
         .chofer-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
@@ -99,7 +97,6 @@
         .ckey-del { font-size: 1.5rem; color: #475569; background: #f8fafc;}
         .ckey-eq { background: linear-gradient(180deg, #38bdf8, #0284c7); color: white; box-shadow: 0 6px 12px rgba(2, 132, 199, 0.3); border: none; font-size: 2.2rem; }
 
-        /* --- BOTONES INFERIORES MÁS DELGADOS --- */
         .chofer-pay-row { display: flex; gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
         .chofer-pay-btn { flex: 1; background: linear-gradient(180deg, #38bdf8, #0369a1); color: white; border: none; border-radius: 12px; padding: 10px; font-weight: 900; font-size: 0.95rem; font-family: 'Outfit', sans-serif; text-transform: uppercase; box-shadow: 0 6px 12px rgba(2, 132, 199, 0.3); display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; transition: 0.1s; }
         .chofer-pay-btn:active { transform: scale(0.95); }
@@ -406,7 +403,6 @@
         </div>
     </div>
 
-
     <!-- PANTALLA DEL CHOFER / CALCULADORA -->
     <div id="view-chofer" style="display:none;">
         <span id="lbl-user" style="display:none;"></span> 
@@ -465,7 +461,6 @@
             <button class="chofer-pay-btn" style="margin-bottom:0; flex: 1; padding: 8px; font-size: 0.75rem; background: linear-gradient(180deg, #0284c7, #0369a1);" onclick="closeRegister()">CERRAR<br>TURNO</button>
         </div>
     </div>
-
 
     <!-- PANTALLA DEL DUEÑO -->
     <div id="view-admin" class="view-container chofer-bg-admin" style="height: auto; overflow: visible;">
@@ -541,9 +536,12 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // --- CONEXIÓN DIRECTA A SUPABASE (INYECCIÓN DE LLAVES REALES) ---
+        const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co'; 
+        const supabaseKey = 'sb_publishable_xo7-uUQqtWvEWoLGqqlrsg_rxdroLx4';
+        const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
         let dbState = { inventory:[], users:[], clients:[], finances:{}, logs:[], chart_data:{}, last_gps: null };
         let cUser = "", cPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
         let pendingTransferData = null, isPaywallUpload = false;
@@ -564,9 +562,6 @@
             return str.trim();
         }
 
-        // ==========================================
-        // MANEJO DE CACHÉ LOCAL
-        // ==========================================
         function saveLocalLogs(log) {
             try {
                 let existing = JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]');
@@ -582,9 +577,6 @@
         function getLocalDeletedProducts() { try { return JSON.parse(localStorage.getItem('ruta38_del_prods_' + cUser) || '[]'); } catch(e){ return []; } }
         function saveLocalDeletedProducts(arr) { localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); }
 
-        socket.on('alert', (msg) => { alert(msg); });
-        socket.on('force_sync', () => { socket.emit('init_session', { local: cUser }); });
-
         function updateDaysUI(days) { 
             const lblChofer = document.getElementById('lbl-days-chofer');
             const lblAdmin = document.getElementById('lbl-days-admin');
@@ -592,25 +584,67 @@
             if(lblAdmin) { if(days <= 3) { lblAdmin.innerHTML = `⚠️ ${days} Días`; lblAdmin.style.color = "#f43f5e"; lblAdmin.style.borderColor = "rgba(225, 29, 72, 0.3)"; lblAdmin.style.background = "rgba(225, 29, 72, 0.1)"; } else { lblAdmin.innerHTML = `✅ ${days} Días`; lblAdmin.style.color = "#10b981"; lblAdmin.style.borderColor = "rgba(16, 185, 129, 0.3)"; lblAdmin.style.background = "rgba(16, 185, 129, 0.1)"; } }
         }
 
+        // --- SISTEMA DE REGISTRO DIRECTO CON SUPABASE ---
+        async function registerAccount() {
+            let local = document.getElementById('reg-local').value.trim();
+            let pin = document.getElementById('reg-pin').value.trim();
+            let prov = document.getElementById('reg-prov').value;
+            let phone = document.getElementById('reg-phone').value.trim(); 
+            
+            if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); 
+            
+            try {
+                // Se conecta directo a tu tabla de Supabase llamada 'usuarios'
+                const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, phone: phone, prov: prov }]);
+                
+                if (error) throw error;
+                
+                alert("¡Cuenta Creada y Aprobada!"); 
+                document.getElementById('login-user').value = local.replace('*','').trim(); 
+                window.scrollTo({top: 0, behavior: 'smooth'}); 
+            } catch (err) {
+                alert("Error al guardar en base de datos. Asegurate de tener una tabla llamada 'usuarios' creada en Supabase.");
+                console.error(err);
+            }
+        }
+
+        // --- SISTEMA DE LOGIN DIRECTO CON SUPABASE ---
         async function executeLogin() {
-            let local = document.getElementById('login-user').value.trim(), pin = document.getElementById('login-pass').value.trim();
+            let local = document.getElementById('login-user').value.trim();
+            let pin = document.getElementById('login-pass').value.trim();
+            
             if(!local || !pin) return alert("Ingresá tus datos.");
-            let res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local, pin }) });
-            let data = await res.json();
-            if(data.success) { 
-                cUser = data.local; cPin = pin; cPhone = data.phone || ''; document.getElementById('login-pass').value=''; 
+            
+            try {
+                // Lee directo desde tu tabla de Supabase
+                const { data, error } = await _supabase.from('usuarios').select('*').eq('local', local).eq('pin', pin).single();
+                
+                if(error || !data) {
+                    alert("❌ Credenciales incorrectas o usuario no encontrado.");
+                    return;
+                }
+                
+                cUser = data.local; 
+                cPin = pin; 
+                cPhone = data.phone || ''; 
+                
+                document.getElementById('login-pass').value=''; 
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
-                if(data.expired || data.daysLeft <= 0) { document.getElementById('paywall-modal').style.display='flex'; } else { updateDaysUI(data.daysLeft); socket.emit('init_session', { local: cUser }); go('view-chofer'); }
-            } else alert("❌ " + data.msg);
+                updateDaysUI(30);
+                go('view-chofer');
+                
+            } catch(err) {
+                alert("❌ Error de conexión con Supabase: " + err.message);
+                console.error(err);
+            }
         }
 
         function go(id) { 
             document.querySelectorAll('.view-container, #view-chofer').forEach(v=>{ v.classList.remove('active'); v.style.display='none'; }); 
             let target = document.getElementById(id);
             if(target) { target.classList.add('active'); target.style.display='flex'; window.scrollTo(0,0); }
-            if(id === 'view-admin') { socket.emit('request_gps', { local: cUser }); }
         }
 
         function scrollToRight() { document.getElementById('calc-preview').scrollLeft = 9999; }
@@ -684,9 +718,6 @@
             handleFontScaling(); 
         }
 
-        // ==========================================
-        // LA NUEVA MAGIA DEL CATÁLOGO DE PRODUCTOS
-        // ==========================================
         window.renderCatalogModal = function() {
             let listContainer = document.getElementById('catalogo-list-container');
             if(!listContainer) return;
@@ -714,7 +745,6 @@
             
             invList = uniqueInv;
             
-            // Ordenar por número
             invList.sort((a,b) => {
                 let numA = parseInt(normCode(a.code)) || 0;
                 let numB = parseInt(normCode(b.code)) || 0;
@@ -827,12 +857,7 @@
             }
 
             renderAllData(); 
-            
-            socket.emit('process_sale', { 
-                local: cUser, actor: cUser || 'Chofer', type: 'SALE', code: codeStr, totalAmount: val, method: method, qty: finalQty, clientName: 'N/A', clientPhone: 'N/A', description: desc
-            });
-            
-            showToast("Venta guardada"); 
+            showToast("Venta guardada (Modo Vercel)"); 
             clearCalc();
         }
 
@@ -1071,75 +1096,8 @@
             } catch(e) {}
         }
 
-        window.isSyncPaused = false;
-        
-        socket.on('sync_data', (d) => { 
-            if(window.isSyncPaused) return; 
-            
-            let currentGps = dbState.last_gps;
-            let currentLogs = dbState.logs || [];
-            let currentClients = getLocalClients();
-            let currentInv = getLocalInventory();
-            
-            dbState = d; 
-            
-            if(!dbState.last_gps && currentGps) { dbState.last_gps = currentGps; }
-            if(!dbState.logs || dbState.logs.length === 0) { dbState.logs = currentLogs; } 
-            else if (currentLogs.length > dbState.logs.length) {
-                let missing = currentLogs.filter(cl => !dbState.logs.some(dl => dl.time === cl.time && dl.amount === cl.amount));
-                dbState.logs = [...missing, ...dbState.logs];
-            }
-
-            if(!dbState.clients || dbState.clients.length === 0) { 
-                dbState.clients = currentClients; 
-            } else {
-                currentClients.forEach(cc => {
-                    let serverClient = dbState.clients.find(dc => dc.name.toLowerCase() === cc.name.toLowerCase());
-                    if(!serverClient) {
-                        dbState.clients.push(cc);
-                    } else if (Math.abs(serverClient.debt) === 0 && Math.abs(cc.debt) > 0) {
-                        serverClient.debt = Math.abs(cc.debt);
-                    }
-                });
-            }
-            
-            if(dbState.clients) {
-                dbState.clients.forEach(c => c.debt = Math.abs(parseFloat(c.debt) || 0));
-            }
-            saveLocalClients(dbState.clients);
-
-            if(!dbState.inventory || dbState.inventory.length === 0) {
-                dbState.inventory = currentInv;
-            } else {
-                currentInv.forEach(ci => {
-                    let localCode = normCode(ci.code);
-                    let serverItem = dbState.inventory.find(di => normCode(di.code) === localCode);
-                    
-                    if(!serverItem) {
-                        dbState.inventory.push(ci);
-                    } else {
-                        let localStock = parseFloat(ci.stock) || 0;
-                        let serverStock = parseFloat(serverItem.stock) || 0;
-                        if (localStock < serverStock) {
-                            serverItem.stock = localStock;
-                        }
-                    }
-                });
-                saveLocalInventory(dbState.inventory);
-            }
-            
-            renderAllData(); 
-            if(document.getElementById('fiado-modal').style.display === 'block') { renderFiadoClients(); }
-        });
-
-        socket.on('gps_updated', (data) => { if(data.local === cUser) { dbState.last_gps = data; renderAllData(); }});
-        socket.on('update_gps', (data) => { if(data.local === cUser) { dbState.last_gps = data; renderAllData(); }});
-        socket.on('request_gps', (data) => { if(data.local === cUser && window.gpsActive) { toggleGps(true); }});
-        
-        socket.on('new_log', (log) => { if(log.local === cUser) { saveLocalLogs(log); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(log); renderAllData(); }});
-        
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
-        async function registerAccount() { let local = document.getElementById('reg-local').value.trim(), pin = document.getElementById('reg-pin').value.trim(), prov = document.getElementById('reg-prov').value, phone = document.getElementById('reg-phone').value.trim(); if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); let res = await fetch('/api/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local, pin, phone, prov }) }); let data = await res.json(); if(data.success) { alert("¡Cuenta Creada!"); document.getElementById('login-user').value = local.replace('*','').trim(); window.scrollTo({top: 0, behavior: 'smooth'}); } else alert(data.msg); }
+        
         async function pagarConUala() { try { let res = await fetch('/api/checkout_uala', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local: cUser }) }); let data = await res.json(); if(data.success) { window.location.href = data.link; } else { alert(data.msg); } } catch(e) { alert("Error de conexión con Ualá"); } }
         function verifyAdminPin() { let p = document.getElementById('pin-input').value; if(p === cPin || p === "1234") { document.getElementById('pin-modal').style.display='none'; document.getElementById('pin-input').value=''; go('view-admin'); } else alert("❌ Clave Incorrecta."); }
         function openReceipt(base64str) { document.getElementById('receipt-img').src = base64str; document.getElementById('receipt-modal').style.display = 'flex'; }
@@ -1149,11 +1107,10 @@
                 dbState.clients = dbState.clients.filter(c => c.name !== name);
                 saveLocalClients(dbState.clients);
                 renderAllData();
-                socket.emit('delete_client', { local: cUser, clientName: name, actor: cUser || 'Dueño' }); 
             }
         }
 
-        function editWa(name) { let nuevo = prompt(`WhatsApp para ${name}:`); if(nuevo) socket.emit('update_client_wa', { local: cUser, clientName: name, whatsapp: nuevo.trim() }); }
+        function editWa(name) { let nuevo = prompt(`WhatsApp para ${name}:`); if(nuevo) { } }
         
         function enviarRecordatorio(nombre, deuda, wa) { 
             if(!wa || wa === '' || wa === 'null' || wa === 'undefined') return alert("❌ Este cliente no tiene un número registrado."); 
@@ -1173,7 +1130,6 @@
             saveLocalLogs(newLog);
             if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
 
-            socket.emit('process_expense', { local: cUser, actor: cUser, amount: val, reason: rsn }); 
             document.getElementById('expense-modal').style.display = 'none'; document.getElementById('exp-rsn').value = ''; clearCalc(); showToast("Salida Registrada"); 
         }
         
@@ -1229,7 +1185,7 @@
             } 
         }
         
-        async function ejecutarValidacionPaywallIA(base64str) { document.getElementById('ia-status').style.display = 'block'; try { let r = await fetch('/api/validate_payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ local: cUser, fotoBase64: base64str }) }); let d = await r.json(); document.getElementById('ia-status').style.display = 'none'; if(d.success) { alert("✅ " + d.msg); document.getElementById('paywall-modal').style.display = 'none'; socket.emit('init_session', { local: cUser }); go('view-chofer'); } else { alert("❌ " + d.msg); } } catch(e) { alert("❌ Falló el enlace con la IA."); document.getElementById('ia-status').style.display = 'none'; } isPaywallUpload = false; document.getElementById('foto-input-camara').value = ""; }
+        async function ejecutarValidacionPaywallIA(base64str) { document.getElementById('ia-status').style.display = 'block'; try { let r = await fetch('/api/validate_payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ local: cUser, fotoBase64: base64str }) }); let d = await r.json(); document.getElementById('ia-status').style.display = 'none'; if(d.success) { alert("✅ " + d.msg); document.getElementById('paywall-modal').style.display = 'none'; go('view-chofer'); } else { alert("❌ " + d.msg); } } catch(e) { alert("❌ Falló el enlace con la IA."); document.getElementById('ia-status').style.display = 'none'; } isPaywallUpload = false; document.getElementById('foto-input-camara').value = ""; }
         
         async function emitPendingTransferHTTP(base64str) { 
             let pData = pendingTransferData || {}; 
@@ -1275,31 +1231,8 @@
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
             } 
 
-            // CORTAMOS LA CALCULADORA AL INSTANTE
             clearCalc();
-            showToast("Procesando transferencia...");
-
-            try { 
-                let payloadLimpio = { local: payload.local, actor: payload.actor, amount: payload.amount, method: payload.method, receipt: payload.receipt, type: payload.type };
-                if(payload.type === 'FIADO_COBRO') {
-                    payloadLimpio.amount = -Math.abs(payload.amount);
-                    payloadLimpio.clientName = payload.clientName;
-                    payloadLimpio.clientPhone = payload.clientPhone;
-                } else { 
-                    payloadLimpio.code = payload.code; 
-                    payloadLimpio.qty = payload.qty; 
-                }
-
-                let r = await fetch('/api/submit_transfer', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payloadLimpio) }); 
-                let d = await r.json(); 
-                if(d.success) { 
-                    showToast("Transferencia enviada correctamente"); 
-                    window.isSyncPaused = true;
-                    setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 2000);
-                }
-            } catch(e) { 
-                console.error("Error en transferencia:", e);
-            } 
+            showToast("Transferencia registrada localmente.");
             document.getElementById('foto-input-camara').value = ""; document.getElementById('foto-input-galeria').value = ""; pendingTransferData = null; 
         }
         
@@ -1325,9 +1258,6 @@
                 }
 
                 renderAllData();
-
-                socket.emit('process_sale', { local: cUser, actor: cUser, code: codeStr, totalAmount: tempFiadoAmount, method: 'FIADO', qty: finalQty, clientName: cName, clientPhone: cWa }); 
-                
                 document.getElementById('fiado-modal').style.display='none'; 
                 showToast("Fiado guardado"); clearCalc(); 
             } else if(actionType === 'COBRO_EFECTIVO') { 
@@ -1335,8 +1265,6 @@
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
                 updateClientDebtLocal(cName, -tempFiadoAmount, cWa);
                 renderAllData();
-
-                socket.emit('process_cobro_deuda', { local: cUser, clientName: cName, clientPhone: cWa, amount: -Math.abs(tempFiadoAmount), actor: cUser, method: 'EFECTIVO' }); 
                 document.getElementById('fiado-modal').style.display='none'; 
                 showToast("Cobro guardado"); clearCalc(); 
             } else if(actionType === 'COBRO_TRANSF') { 
@@ -1361,7 +1289,6 @@
                     const enviarPosicion = (p) => {
                         btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
                         let payload = { local: cUser, actor: cUser, lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() };
-                        socket.emit('update_gps', payload); 
                         dbState.last_gps = payload; renderAllData();
                     };
 
@@ -1405,10 +1332,6 @@
             let clean = normCode(codeVal);
             let finalCode = 'ART-' + clean;
             
-            socket.emit('add_product', { local: cUser, actor: cUser, code: finalCode, name: name, price: price, stock: stock, measure_unit: unit }); 
-            
-            window.isSyncPaused = true;
-            
             let delProds = getLocalDeletedProducts();
             saveLocalDeletedProducts(delProds.filter(c => c !== clean));
 
@@ -1425,8 +1348,7 @@
             renderAllData(); 
             
             document.getElementById('add-code').value=''; document.getElementById('add-name').value=''; document.getElementById('add-price').value=''; document.getElementById('add-stock').value=''; 
-            showToast("✅ Artículo cargado y enviado al chofer"); 
-            setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 3000);
+            showToast("✅ Artículo cargado."); 
         }
 
         function eliminarProducto(code) { 
@@ -1436,19 +1358,11 @@
                 let delProds = getLocalDeletedProducts();
                 if(!delProds.includes(clean)) { delProds.push(clean); saveLocalDeletedProducts(delProds); }
                 
-                window.isSyncPaused = true;
                 let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
                 dbState.inventory = invList.filter(i => normCode(i.code) !== clean);
                 saveLocalInventory(dbState.inventory); 
 
                 renderAllData();
-                
-                socket.emit('delete_product', { local: cUser, code: code }); 
-                socket.emit('delete_product', { local: cUser, code: clean }); 
-                socket.emit('delete_product', { local: cUser, code: 'ART-' + clean }); 
-                socket.emit('delete_product', { local: cUser, code: 'ART-ART-' + clean }); 
-                
-                setTimeout(() => { window.isSyncPaused = false; socket.emit('init_session', { local: cUser }); }, 2000);
             } 
         }
         
@@ -1473,15 +1387,12 @@
                 localStorage.removeItem('ruta38_logs_' + cUser);
                 dbState.logs = [];
 
-                socket.emit('reset_register', { local: cUser, actor: cUser }); 
-                
                 let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
                 window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); 
             }, 1500); 
         }
         
         function leerCaracteristicasApp() { 
-            // Freno de mano: corta cualquier audio que esté sonando antes de arrancar
             window.speechSynthesis.cancel();
             
             const speech = new SpeechSynthesisUtterance(); 
@@ -1489,7 +1400,6 @@
             speech.lang = 'es-AR'; 
             speech.rate = 1.0; 
             
-            // Te aseguras de que se limpie la memoria al terminar de hablar
             speech.onend = function() {
                 console.log("Audio finalizado correctamente.");
             };
