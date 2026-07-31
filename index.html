@@ -304,7 +304,7 @@
                 <button onclick="leerCaracteristicasApp()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 900; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4); cursor: pointer; font-size: 0.95rem; letter-spacing: 0.5px; transition: transform 0.2s;">🎙️ ESCUCHAR CÓMO FUNCIONA</button>
             </div>
 
-            <!-- BOTÓN DE INSTALACIÓN PWA ACÁ -->
+            <!-- BOTÓN DE INSTALACIÓN PWA -->
             <button id="btn-instalar-app" class="btn-gradient" style="display: none; background: linear-gradient(135deg, #10b981, #059669); margin-bottom: 20px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);">
                 📲 INSTALAR APP EN EL CELULAR
             </button>
@@ -1090,6 +1090,33 @@
             
             let chfLogs = document.getElementById('chofer-logs-modal-container');
             if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
+
+            // --- CÓDIGO PARA MOSTRAR EL MAPA EN EL PANEL ADMIN ---
+            let admGps = document.getElementById('adm-gps');
+            if (admGps) {
+                if (dbState.last_gps && dbState.last_gps.lat) {
+                    let lat = dbState.last_gps.lat;
+                    let lon = dbState.last_gps.lon;
+                    let time = dbState.last_gps.time;
+                    
+                    admGps.innerHTML = `
+                        <div style="text-align: left; margin-bottom: 8px;">
+                            <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">⏱️ Actualizado: ${time}</span>
+                        </div>
+                        <iframe 
+                            width="100%" 
+                            height="220" 
+                            style="border:0; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);" 
+                            loading="lazy" 
+                            allowfullscreen 
+                            src="https://maps.google.com/maps?q=${lat},${lon}&z=16&output=embed">
+                        </iframe>
+                        <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')" style="width: 100%; margin-top: 10px; background: #f8fafc; border: 1px solid #cbd5e1; color: #0f172a; padding: 10px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer;">🗺️ ABRIR EN APP DE GOOGLE MAPS</button>
+                    `;
+                } else {
+                    admGps.innerHTML = '<p style="color:#64748b; font-size:0.85rem; padding: 20px 0;">El chofer debe encender el GPS (Botón superior).</p>';
+                }
+            }
         }
 
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
@@ -1392,7 +1419,8 @@
             window.speechSynthesis.cancel();
             
             const speech = new SpeechSynthesisUtterance(); 
-            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores, panaderías, venta de bidones de agua, baterías, cubiertas y cualquier rubro de venta de artículo único. Con este sistema, el dueño controla absolutamente todo desde su casa mirando el celular, supervisando en tiempo real las ventas que su empleado or vendedor realiza en el negocio o en la calle. Es una plataforma con toda la tecnología necesaria para que vendas más y mejor. La calculadora inteligente selecciona el artículo, calcula el total al instante, y cierra ventas por transferencia o efectivo. Además, incluye libreta de fiados y cobros automáticos por WhatsApp. ¡Sumate al futuro con Ruta 38 Envíos!"; 
+            // TEXTO ACTUALIZADO CON LA CARACTERÍSTICA DE GPS
+            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores, panaderías, venta de bidones de agua, baterías, cubiertas y cualquier rubro de venta de artículo único. Con este sistema, el dueño controla absolutamente todo desde su casa mirando el celular, supervisando en tiempo real las ventas que su empleado o vendedor realiza en el negocio o en la calle, además de rastrear la ubicación exacta del transporte en vivo gracias al GPS integrado. Es una plataforma con toda la tecnología necesaria para que vendas más y mejor. La calculadora inteligente selecciona el artículo, calcula el total al instante, y cierra ventas por transferencia o efectivo. Además, incluye libreta de fiados y cobros automáticos por WhatsApp. ¡Sumate al futuro con Ruta 38 Envíos!"; 
             speech.lang = 'es-AR'; 
             speech.rate = 1.0; 
             
