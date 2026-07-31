@@ -8,9 +8,9 @@
     <meta name="theme-color" content="#fdfdfd">
     <title>Ruta 38 Envíos | Control de Repartos</title>
     
-    <!-- Llama al manifest y al logo por separado -->
+    <!-- MANIFEST Y LOGO INCUSTRADOS PARA QUE SEA 100% INSTALABLE SIN SUBIR FOTOS -->
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9IiMwZWE1ZTkiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMDAiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmaWxsPSIjZmZmIiBmb250LXdlaWdodD0iYm9sZCI+Mzg8L3RleHQ+PC9zdmc+">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1085,12 +1085,6 @@
             
             let chfLogs = document.getElementById('chofer-logs-modal-container');
             if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
-            
-            try { 
-                if(dbState.last_gps && document.getElementById('adm-gps') && dbState.last_gps.lat) {
-                    document.getElementById('adm-gps').innerHTML = `<p style="color:#0f172a; margin-bottom:15px; font-size:0.85rem; font-weight:800; background:#f8fafc; border:1px solid #e2e8f0; padding: 10px; border-radius: 12px; display:inline-block;">📡 ÚLTIMA POSICIÓN: ${dbState.last_gps.time}</p><iframe width="100%" height="250" src="https://maps.google.com/maps?q=${dbState.last_gps.lat},${dbState.last_gps.lon}&hl=es&z=16&output=embed" frameborder="0" style="border-radius:14px; border: 1px solid #e2e8f0;"></iframe>`; 
-                }
-            } catch(e) {}
         }
 
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
@@ -1393,7 +1387,7 @@
             window.speechSynthesis.cancel();
             
             const speech = new SpeechSynthesisUtterance(); 
-            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores, panaderías, venta de bidones de agua, baterías, cubiertas y cualquier rubro de venta de artículo único. Con este sistema, el dueño controla absolutamente todo desde su casa mirando el celular, supervisando en tiempo real las ventas que su empleado o vendedor realiza en el negocio o en la calle. Es una plataforma con toda la tecnología necesaria para que vendas más y mejor. La calculadora inteligente selecciona el artículo, calcula el total al instante, y cierra ventas por transferencia o efectivo. Además, incluye libreta de fiados y cobros automáticos por WhatsApp. ¡Sumate al futuro con Ruta 38 Envíos!"; 
+            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores, panaderías, venta de bidones de agua, baterías, cubiertas y cualquier rubro de venta de artículo único. Con este sistema, el dueño controla absolutamente todo desde su casa mirando el celular, supervisando en tiempo real las ventas que su empleado or vendedor realiza en el negocio o en la calle. Es una plataforma con toda la tecnología necesaria para que vendas más y mejor. La calculadora inteligente selecciona el artículo, calcula el total al instante, y cierra ventas por transferencia o efectivo. Además, incluye libreta de fiados y cobros automáticos por WhatsApp. ¡Sumate al futuro con Ruta 38 Envíos!"; 
             speech.lang = 'es-AR'; 
             speech.rate = 1.0; 
             
@@ -1402,6 +1396,17 @@
             };
             
             window.speechSynthesis.speak(speech); 
+        }
+
+        // --- MOTOR PARA QUE LA PWA SE PUEDA INSTALAR ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('Service Worker listo', reg);
+                }).catch(err => {
+                    console.log('Error Service Worker', err);
+                });
+            });
         }
     </script>
 </body>
