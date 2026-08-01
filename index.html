@@ -320,7 +320,6 @@
                 </select>
                 <input type="tel" id="reg-phone" placeholder="Tu WhatsApp (Ej: 381...)" class="input-light">
                 
-                <!-- BISTURÍ: AGREGADO EL PIN PARA EL DUEÑO -->
                 <input type="password" id="reg-pin" placeholder="PIN de 4 dígitos (Para Empleados)" class="input-light mask-text" maxlength="4" style="margin-bottom: 12px;">
                 <input type="password" id="reg-admin-pin" placeholder="PIN Secreto (Para Dueño)" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px;">
                 
@@ -554,7 +553,6 @@
 
         let dbState = { inventory:[], users:[], clients:[], finances:{}, logs:[], chart_data:{}, last_gps: null };
         
-        // BISTURÍ: AGREGADA LA VARIABLE cAdminPin
         let cUser = "", cPin = "", cAdminPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
         let pendingTransferData = null, isPaywallUpload = false;
         let tempFiadoAmount = 0;
@@ -623,16 +621,26 @@
         }
 
         async function registerAccount() {
-            let local = document.getElementById('reg-local').value.trim();
+            let localInput = document.getElementById('reg-local').value.trim();
             let pin = document.getElementById('reg-pin').value.trim();
             let adminPin = document.getElementById('reg-admin-pin').value.trim();
             let prov = document.getElementById('reg-prov').value;
             let phone = document.getElementById('reg-phone').value.trim(); 
             
-            if(!local || !pin || !adminPin || !prov || !phone) return alert("Complete todos los datos y ambos PINs."); 
+            if(!localInput || !pin || !adminPin || !prov || !phone) return alert("Complete todos los datos y ambos PINs."); 
             
+            // Forzamos a mayúsculas para que no haya errores de tipeo
+            let local = localInput.toUpperCase();
+
             try {
-                // BISTURÍ: AHORA GUARDA EL ADMIN PIN
+                // --- BISTURÍ: PLAN ANTIPÍCARO REAL ---
+                const { data: celData } = await _supabase.from('usuarios').select('phone').eq('phone', phone);
+                if (celData && celData.length > 0) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
+                
+                const { data: locData } = await _supabase.from('usuarios').select('local').eq('local', local);
+                if (locData && locData.length > 0) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
+                // --- FIN ANTIPÍCARO ---
+
                 const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
                 
                 if (error) {
@@ -641,7 +649,7 @@
                 }
                 
                 alert("¡Cuenta Creada y Aprobada!"); 
-                document.getElementById('login-user').value = local.replace('*','').trim(); 
+                document.getElementById('login-user').value = local; 
                 window.scrollTo({top: 0, behavior: 'smooth'}); 
             } catch (err) {
                 alert("Error de sistema: " + err.message);
@@ -649,22 +657,24 @@
         }
 
         async function executeLogin() {
-            let local = document.getElementById('login-user').value.trim();
+            let localInput = document.getElementById('login-user').value.trim();
             let pin = document.getElementById('login-pass').value.trim();
             
-            if(!local || !pin) return alert("Ingresá tus datos.");
+            if(!localInput || !pin) return alert("Ingresá tus datos.");
+            
+            // Forzamos a mayúsculas igual que en el registro
+            let local = localInput.toUpperCase();
             
             try {
                 const { data, error } = await _supabase.from('usuarios').select('*').eq('local', local).eq('pin', pin).single();
                 
                 if(error || !data) {
-                    alert("❌ Credenciales incorrectas o usuario no encontrado.");
+                    alert("❌ Credenciales incorrectas o el PIN no pertenece a este local.");
                     return;
                 }
                 
                 cUser = data.local; 
                 cPin = pin; 
-                // BISTURÍ: RECUPERA LA CLAVE DEL DUEÑO, SI NO EXISTE PONE 0000 DE EMERGENCIA
                 cAdminPin = data.admin_pin || "0000"; 
                 cPhone = data.phone || ''; 
                 
@@ -1225,7 +1235,6 @@
         
         async function pagarConUala() { try { let res = await fetch('/api/checkout_uala', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local: cUser }) }); let data = await res.json(); if(data.success) { window.location.href = data.link; } else { alert(data.msg); } } catch(e) { alert("Error de conexión con Ualá"); } }
         
-        // BISTURÍ: VERIFICACIÓN CORREGIDA PARA ACEPTAR SOLO LA CLAVE DEL DUEÑO
         function verifyAdminPin() { 
             let p = document.getElementById('pin-input').value; 
             if(p === cAdminPin) { 
