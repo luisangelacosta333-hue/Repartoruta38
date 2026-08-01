@@ -597,6 +597,17 @@
             if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); 
             
             try {
+                // --- NUEVO: SISTEMA ANTIPÍCARO DE WHATSAPP ---
+                const { data: existeWa, error: errorBusqueda } = await _supabase
+                    .from('usuarios')
+                    .select('phone')
+                    .eq('phone', phone);
+                    
+                if (existeWa && existeWa.length > 0) {
+                    return alert("⚠️ ANTIPÍCARO ACTIVADO: Este número de WhatsApp ya está registrado en otra cuenta.");
+                }
+                // ---------------------------------------------
+
                 const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, phone: phone, prov: prov }]);
                 
                 if (error) {
