@@ -319,14 +319,18 @@
                     <option>Tucumán</option><option>Buenos Aires</option><option>CABA</option><option>Catamarca</option><option>Chaco</option><option>Chubut</option><option>Córdoba</option><option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option><option>Jujuy</option><option>La Pampa</option><option>La Rioja</option><option>Mendoza</option><option>Misiones</option><option>Neuquén</option><option>Río Negro</option><option>Salta</option><option>San Juan</option><option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option><option>Santiago del Estero</option><option>Tierra del Fuego</option>
                 </select>
                 <input type="tel" id="reg-phone" placeholder="Tu WhatsApp (Ej: 381...)" class="input-light">
-                <input type="password" id="reg-pin" placeholder="PIN de 4 dígitos" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px;">
+                
+                <!-- BISTURÍ: AGREGADO EL PIN PARA EL DUEÑO -->
+                <input type="password" id="reg-pin" placeholder="PIN de 4 dígitos (Para Empleados)" class="input-light mask-text" maxlength="4" style="margin-bottom: 12px;">
+                <input type="password" id="reg-admin-pin" placeholder="PIN Secreto (Para Dueño)" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px;">
+                
                 <button onclick="registerAccount()" class="btn-gradient">✅ Activar cuenta</button>
             </div>
 
             <div class="glass-card-light" style="padding: 20px;">
                 <h2 style="text-align: center; font-size: 1.2rem; font-weight: 900; margin: 0 0 15px 0; color: #0f172a; font-family:'Outfit',sans-serif;">🛡️ YA TENGO CUENTA</h2>
                 <input type="text" id="login-user" placeholder="Nombre del Local" class="input-light" spellcheck="false" style="margin-bottom: 12px;">
-                <input type="password" id="login-pass" placeholder="PIN" class="input-light mask-text" style="margin-bottom: 15px;">
+                <input type="password" id="login-pass" placeholder="PIN de Empleado" class="input-light mask-text" style="margin-bottom: 15px;">
                 <button onclick="executeLogin()" style="width:100%; padding:15px; background:rgba(14, 165, 233, 0.05); color:#0ea5e9; font-weight:800; font-size:0.95rem; border:2px solid #0ea5e9; border-radius:14px; text-transform:uppercase; cursor:pointer; transition: 0.2s; font-family:'Outfit',sans-serif;">Entrar a mi caja</button>
             </div>
 
@@ -549,12 +553,15 @@
         const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
         let dbState = { inventory:[], users:[], clients:[], finances:{}, logs:[], chart_data:{}, last_gps: null };
-        let cUser = "", cPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
+        
+        // BISTURÍ: AGREGADA LA VARIABLE cAdminPin
+        let cUser = "", cPin = "", cAdminPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
         let pendingTransferData = null, isPaywallUpload = false;
         let tempFiadoAmount = 0;
         
         let lastCalculatedQty = 1;
         window.gpsActive = false;
+        window.isSyncing = false; 
 
         function getTucumanDateFE() { return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric' }); }
         function getTucumanTimeFE() { return new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit' }); }
@@ -566,9 +573,9 @@
             return str.trim();
         }
 
-        // --- INICIO BISTURÍ: SINCRONIZACIÓN EN LA NUBE ---
         async function syncToCloud() {
             if (!cUser) return;
+            window.isSyncing = true;
             let payload = {
                 inventory: getLocalInventory(),
                 clients: getLocalClients(),
@@ -577,6 +584,7 @@
             };
             try { await _supabase.from('usuarios').update({ app_data: payload }).eq('local', cUser); } 
             catch(e) { console.error("Error sincronizando", e); }
+            finally { window.isSyncing = false; }
         }
 
         function saveLocalLogs(log) {
@@ -606,7 +614,6 @@
             localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); syncToCloud(); 
         }
         function getLocalDeletedProducts() { try { return JSON.parse(localStorage.getItem('ruta38_del_prods_' + cUser) || '[]'); } catch(e){ return []; } }
-        // --- FIN BISTURÍ ---
 
         function updateDaysUI(days) { 
             const lblChofer = document.getElementById('lbl-days-chofer');
@@ -618,13 +625,15 @@
         async function registerAccount() {
             let local = document.getElementById('reg-local').value.trim();
             let pin = document.getElementById('reg-pin').value.trim();
+            let adminPin = document.getElementById('reg-admin-pin').value.trim();
             let prov = document.getElementById('reg-prov').value;
             let phone = document.getElementById('reg-phone').value.trim(); 
             
-            if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); 
+            if(!local || !pin || !adminPin || !prov || !phone) return alert("Complete todos los datos y ambos PINs."); 
             
             try {
-                const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, phone: phone, prov: prov }]);
+                // BISTURÍ: AHORA GUARDA EL ADMIN PIN
+                const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
                 
                 if (error) {
                     alert("Error devuelto por Supabase: " + error.message);
@@ -655,9 +664,10 @@
                 
                 cUser = data.local; 
                 cPin = pin; 
+                // BISTURÍ: RECUPERA LA CLAVE DEL DUEÑO, SI NO EXISTE PONE 0000 DE EMERGENCIA
+                cAdminPin = data.admin_pin || "0000"; 
                 cPhone = data.phone || ''; 
                 
-                // --- BISTURÍ: DESCARGAR DATOS DE LA NUBE ---
                 if (data.app_data) {
                     let cloudData = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
                     dbState.inventory = cloudData.inventory || [];
@@ -674,7 +684,6 @@
                     dbState.logs = getLocalLogs();
                     syncToCloud(); 
                 }
-                // --- FIN BISTURÍ ---
                 
                 document.getElementById('login-pass').value=''; 
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
@@ -699,6 +708,35 @@
                 
                 renderAllData(); 
                 go('view-chofer');
+
+                if (!window.syncInterval) {
+                    window.syncInterval = setInterval(async () => {
+                        if (window.isSyncing) return; 
+                        try {
+                            const { data, error } = await _supabase.from('usuarios').select('app_data').eq('local', cUser).single();
+                            if (data && data.app_data) {
+                                let cd = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
+                                
+                                let invChanged = JSON.stringify(cd.inventory || []) !== JSON.stringify(dbState.inventory);
+                                let cliChanged = JSON.stringify(cd.clients || []) !== JSON.stringify(dbState.clients);
+                                let logChanged = JSON.stringify(cd.logs || []) !== JSON.stringify(dbState.logs);
+                                
+                                if (invChanged || cliChanged || logChanged) {
+                                    dbState.inventory = cd.inventory || [];
+                                    dbState.clients = cd.clients || [];
+                                    dbState.logs = cd.logs || [];
+                                    
+                                    localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
+                                    localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
+                                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
+                                    localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cd.deletedProducts || []));
+                                    
+                                    renderAllData();
+                                }
+                            }
+                        } catch(e) {}
+                    }, 5000); 
+                }
                 
             } catch(err) {
                 alert("❌ Error de conexión: " + err.message);
@@ -1186,7 +1224,19 @@
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
         
         async function pagarConUala() { try { let res = await fetch('/api/checkout_uala', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local: cUser }) }); let data = await res.json(); if(data.success) { window.location.href = data.link; } else { alert(data.msg); } } catch(e) { alert("Error de conexión con Ualá"); } }
-        function verifyAdminPin() { let p = document.getElementById('pin-input').value; if(p === cPin || p === "1234") { document.getElementById('pin-modal').style.display='none'; document.getElementById('pin-input').value=''; go('view-admin'); } else alert("❌ Clave Incorrecta."); }
+        
+        // BISTURÍ: VERIFICACIÓN CORREGIDA PARA ACEPTAR SOLO LA CLAVE DEL DUEÑO
+        function verifyAdminPin() { 
+            let p = document.getElementById('pin-input').value; 
+            if(p === cAdminPin) { 
+                document.getElementById('pin-modal').style.display='none'; 
+                document.getElementById('pin-input').value=''; 
+                go('view-admin'); 
+            } else {
+                alert("❌ Clave Incorrecta."); 
+            }
+        }
+        
         function openReceipt(base64str) { document.getElementById('receipt-img').src = base64str; document.getElementById('receipt-modal').style.display = 'flex'; }
         
         function eliminarDeudor(name) { 
