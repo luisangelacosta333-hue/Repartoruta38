@@ -639,7 +639,25 @@
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
-                updateDaysUI(30);
+                // --- CÁLCULO REAL DE DÍAS RESTANTES ---
+                let diasRestantes = 30;
+                if (data.created_at) {
+                    let fechaCreacion = new Date(data.created_at);
+                    let hoy = new Date();
+                    let diferenciaMs = hoy - fechaCreacion;
+                    let diasPasados = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
+                    diasRestantes = 30 - diasPasados;
+                    if (diasRestantes < 0) diasRestantes = 0;
+                }
+                
+                updateDaysUI(diasRestantes);
+
+                // --- BLOQUEO AUTOMÁTICO SI LA PRUEBA TERMINÓ ---
+                if (diasRestantes <= 0) {
+                    document.getElementById('paywall-modal').style.display = 'flex';
+                    return; // Detiene el proceso para que no puedan saltarse el pago
+                }
+                
                 renderAllData(); // DIBUJAR TODO SIN DEMORAS
                 go('view-chofer');
                 
