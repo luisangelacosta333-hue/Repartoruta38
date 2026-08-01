@@ -566,20 +566,47 @@
             return str.trim();
         }
 
+        // --- INICIO BISTURÍ: SINCRONIZACIÓN EN LA NUBE ---
+        async function syncToCloud() {
+            if (!cUser) return;
+            let payload = {
+                inventory: getLocalInventory(),
+                clients: getLocalClients(),
+                logs: getLocalLogs(),
+                deletedProducts: getLocalDeletedProducts()
+            };
+            try { await _supabase.from('usuarios').update({ app_data: payload }).eq('local', cUser); } 
+            catch(e) { console.error("Error sincronizando", e); }
+        }
+
         function saveLocalLogs(log) {
             try {
                 let existing = JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]');
                 let isDuplicate = existing.some(l => l.time === log.time && l.amount === log.amount && l.type === log.type);
-                if(!isDuplicate) { existing.unshift(log); localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(existing.slice(0, 50))); }
+                if(!isDuplicate) { 
+                    existing.unshift(log); 
+                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(existing.slice(0, 50))); 
+                    syncToCloud(); 
+                }
             } catch(e){}
         }
         function getLocalLogs() { try { return JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]'); } catch(e){ return []; } }
-        function saveLocalClients(clientList) { try { localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(clientList)); } catch(e){} }
+        
+        function saveLocalClients(clientList) { 
+            try { localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(clientList)); syncToCloud(); } catch(e){} 
+        }
         function getLocalClients() { try { return JSON.parse(localStorage.getItem('ruta38_clients_' + cUser) || '[]'); } catch(e){ return []; } }
-        function saveLocalInventory(inv) { try { localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(inv)); } catch(e){} }
+        
+        function saveLocalInventory(inv) { 
+            try { localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(inv)); syncToCloud(); } catch(e){} 
+        }
         function getLocalInventory() { try { return JSON.parse(localStorage.getItem('ruta38_inv_' + cUser) || '[]'); } catch(e){ return []; } }
+        
+        function saveLocalDeletedProducts(arr) { 
+            localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); syncToCloud(); 
+        }
         function getLocalDeletedProducts() { try { return JSON.parse(localStorage.getItem('ruta38_del_prods_' + cUser) || '[]'); } catch(e){ return []; } }
-        function saveLocalDeletedProducts(arr) { localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); }
+        // --- FIN BISTURÍ ---
 
         function updateDaysUI(days) { 
             const lblChofer = document.getElementById('lbl-days-chofer');
@@ -597,17 +624,6 @@
             if(!local || !pin || !prov || !phone) return alert("Complete todos los datos."); 
             
             try {
-                // --- NUEVO: SISTEMA ANTIPÍCARO DE WHATSAPP ---
-                const { data: existeWa, error: errorBusqueda } = await _supabase
-                    .from('usuarios')
-                    .select('phone')
-                    .eq('phone', phone);
-                    
-                if (existeWa && existeWa.length > 0) {
-                    return alert("⚠️ ANTIPÍCARO ACTIVADO: Este número de WhatsApp ya está registrado en otra cuenta.");
-                }
-                // ---------------------------------------------
-
                 const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, phone: phone, prov: prov }]);
                 
                 if (error) {
@@ -641,16 +657,29 @@
                 cPin = pin; 
                 cPhone = data.phone || ''; 
                 
-                // --- SOLUCIÓN: CARGAR DATOS GUARDADOS AL INSTANTE ---
-                dbState.inventory = getLocalInventory();
-                dbState.clients = getLocalClients();
-                dbState.logs = getLocalLogs();
+                // --- BISTURÍ: DESCARGAR DATOS DE LA NUBE ---
+                if (data.app_data) {
+                    let cloudData = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
+                    dbState.inventory = cloudData.inventory || [];
+                    dbState.clients = cloudData.clients || [];
+                    dbState.logs = cloudData.logs || [];
+                    
+                    localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
+                    localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
+                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
+                    localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cloudData.deletedProducts || []));
+                } else {
+                    dbState.inventory = getLocalInventory();
+                    dbState.clients = getLocalClients();
+                    dbState.logs = getLocalLogs();
+                    syncToCloud(); 
+                }
+                // --- FIN BISTURÍ ---
                 
                 document.getElementById('login-pass').value=''; 
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
-                // --- CÁLCULO REAL DE DÍAS RESTANTES ---
                 let diasRestantes = 30;
                 if (data.created_at) {
                     let fechaCreacion = new Date(data.created_at);
@@ -663,13 +692,12 @@
                 
                 updateDaysUI(diasRestantes);
 
-                // --- BLOQUEO AUTOMÁTICO SI LA PRUEBA TERMINÓ ---
                 if (diasRestantes <= 0) {
                     document.getElementById('paywall-modal').style.display = 'flex';
-                    return; // Detiene el proceso para que no puedan saltarse el pago
+                    return; 
                 }
                 
-                renderAllData(); // DIBUJAR TODO SIN DEMORAS
+                renderAllData(); 
                 go('view-chofer');
                 
             } catch(err) {
@@ -1509,7 +1537,6 @@
         window.addEventListener('appinstalled', () => {
             if (btnInstalar) btnInstalar.style.display = 'none';
         });
-
 
         // --- MOTOR PARA QUE LA PWA SE PUEDA INSTALAR ---
         if ('serviceWorker' in navigator) {
