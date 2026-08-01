@@ -300,7 +300,7 @@
             <div class="landing-hero-3d">
                 <div class="logo-3d-container"><div class="logo-3d-text">38</div></div>
                 <h1 style="font-size: 2.2rem; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; line-height: 1.1; font-family:'Outfit',sans-serif;">RUTA 38<br><span style="color: #0ea5e9;">ENVÍOS</span></h1>
-                <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; font-weight: 500; margin: 0 10px 15px 10px;">La inteligencia artificial que <b>controla los repartos de tu distribuidora, panadería o comercio de artículo único las 24 hs</b>.</p>
+                <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; font-weight: 500; margin: 0 10px 15px 10px;">La inteligencia artificial que <b>controla las ventas de tu local y los repartos en calle</b>. Ideal para <b>pizzerías, sandwicherías, panaderías, distribuidoras y artículos únicos</b> las 24 hs.</p>
                 <button onclick="leerCaracteristicasApp()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 900; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4); cursor: pointer; font-size: 0.95rem; letter-spacing: 0.5px; transition: transform 0.2s;">🎙️ ESCUCHAR CÓMO FUNCIONA</button>
             </div>
 
@@ -381,11 +381,11 @@
                 <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Ideal para soda, bebidas o panaderías. Seguí el recorrido, las ventas y el stock de cada camión o preventista al instante.</p>
             </div>
             
-            <!-- NUEVA CAJA MONOPRODUCTO -->
+            <!-- NUEVA CAJA CONTROL TOTAL / LOCALES -->
             <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
-                <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(16,185,129,0.3);">🔋</div>
-                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Venta de Artículo Único</h4>
-                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Baterías, garrafas o bidones. Si vendés un solo producto, el sistema lo autoselecciona para que tu empleado venda y cobre en un segundo, sin buscar nada.</p>
+                <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(16,185,129,0.3);">🍕</div>
+                <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Control Total de tu Negocio</h4>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Llevá el control total de ventas para artículos varios. Perfecto para <b>pizzerías, sandwicherías</b> o locales con venta de repuestos. Tus empleados registran la venta al instante y vos lo ves desde tu casa.</p>
             </div>
 
             <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
@@ -849,7 +849,8 @@
             let currentQty = parseQty(expr);
             let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
             let codeStr = selProd ? selProd.code : 'VARIOS'; 
-            let desc = `Venta de ${finalQty}x ${codeStr}`;
+            let prodName = selProd ? selProd.name : '';
+            let desc = `Venta de ${finalQty}x ${codeStr} ${prodName ? ' - ' + prodName : ''}`;
 
             let newLog = { type: 'VENTA', method: method, amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: desc };
             saveLocalLogs(newLog);
@@ -1256,7 +1257,10 @@
                     saveLocalInventory(dbState.inventory);
                 }
 
-                let newLog = { type: 'VENTA', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${payload.qty}x ${payload.code} (TRANSFERENCIA)`, foto_base64: base64str };
+                let prodNameT = (pData.product && pData.product.name) ? pData.product.name : '';
+                let descTransfer = `Venta de ${payload.qty}x ${payload.code} ${prodNameT ? ' - ' + prodNameT : ''} (TRANSF)`;
+                
+                let newLog = { type: 'VENTA', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: descTransfer, foto_base64: base64str };
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
             } 
 
@@ -1272,7 +1276,9 @@
                 let currentQty = parseQty(expr);
                 let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
                 
-                let newLog = { type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${finalQty}x ${codeStr} a ${cName} (FIADO)` };
+                let prodNameF = selProd ? selProd.name : '';
+                let descFiado = `Venta de ${finalQty}x ${codeStr} ${prodNameF ? ' - ' + prodNameF : ''} a ${cName} (FIADO)`;
+                let newLog = { type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: descFiado };
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
                 updateClientDebtLocal(cName, tempFiadoAmount, cWa);
 
@@ -1425,8 +1431,7 @@
             window.speechSynthesis.cancel();
             
             const speech = new SpeechSynthesisUtterance(); 
-            // TEXTO ACTUALIZADO CON LA CARACTERÍSTICA DE GPS
-            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos Ruta 38 Envíos, la plataforma definitiva para repartidores, panaderías, venta de bidones de agua, baterías, cubiertas y cualquier rubro de venta de artículo único. Con este sistema, el dueño controla absolutamente todo desde su casa mirando el celular, supervisando en tiempo real las ventas que su empleado o vendedor realiza en el negocio o en la calle, además de rastrear la ubicación exacta del transporte en vivo gracias al GPS integrado. Es una plataforma con toda la tecnología necesaria para que vendas más y mejor. La calculadora inteligente selecciona el artículo, calcula el total al instante, y cierra ventas por transferencia o efectivo. Además, incluye libreta de fiados y cobros automáticos por WhatsApp. ¡Sumate al futuro con Ruta 38 Envíos!"; 
+            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos la plataforma definitiva que controla los repartos y las ventas directas de tu local. Es el sistema ideal para pizzerías, sandwicherías, panaderías, distribuidoras y comercios de artículos varios o únicos como baterías. Con esta aplicación, llevás el control total de tu negocio: el dueño supervisa todo desde su casa mirando el celular en tiempo real, ya sea que el empleado venda en el mostrador o en la calle. La calculadora inteligente selecciona el producto, calcula el total al instante y cierra ventas en efectivo o transferencia, registrando el nombre exacto de lo que se vendió para tu tranquilidad. Además, incluye libreta de fiados y cobro automático por WhatsApp. ¡Sumate al futuro y vendé más y mejor con nosotros!"; 
             speech.lang = 'es-AR'; 
             speech.rate = 1.0; 
             
