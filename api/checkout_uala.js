@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-    // 1. Permisos para que la app se conecte sin bloqueos
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
@@ -12,17 +11,16 @@ export default async function handler(req, res) {
         const { local } = req.body;
         if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
-        // 2. Leemos las 3 variables que YA TENÉS guardadas en Vercel
         const UALA_USER = process.env.UALA_USERNAME;
         const UALA_ID = process.env.UALA_CLIENT_ID; 
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET;
 
         if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
-            return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel. Revisá los nombres.' });
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales en Vercel.' });
         }
 
-        // 3. PASO 1: Loguearse en Ualá para pedir el Token Temporal
-        const authResponse = await fetch('https://auth.ualabis.com.ar/1/auth/token', {
+        // PASO 1: Loguearse en Ualá (Usando la ruta api/v1/)
+        const authResponse = await fetch('https://auth.ualabis.com.ar/api/v1/auth/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -33,17 +31,23 @@ export default async function handler(req, res) {
             })
         });
 
-        const authData = await authResponse.json();
+        // Lo leemos como texto por si Ualá tira un error raro que no sea JSON
+        const authText = await authResponse.text();
+        let authData;
+        try {
+            authData = JSON.parse(authText);
+        } catch(e) {
+            return res.status(500).json({ success: false, msg: 'Error Raro en Auth Ualá: ' + authText.substring(0, 60) });
+        }
 
         if (!authData.access_token) {
-            console.error("Error Auth Ualá:", authData);
-            return res.status(401).json({ success: false, msg: 'Fallo al iniciar sesión en Ualá. Credenciales inválidas.' });
+            return res.status(401).json({ success: false, msg: 'Ualá rechazó las llaves. Revisá que el Usuario, ID y Secret estén bien copiados en Vercel.' });
         }
 
         const accessToken = authData.access_token;
 
-        // 4. PASO 2: Crear el link de pago con el Token que nos acaban de dar
-        const checkoutResponse = await fetch('https://checkout.ualabis.com.ar/1/checkout', {
+        // PASO 2: Crear el link de cobro
+        const checkoutResponse = await fetch('https://checkout.ualabis.com.ar/api/v1/checkout', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -52,24 +56,28 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 amount: "9000.00",
                 description: `Renovación 30 días - Local: ${local}`,
-                callback_success: "https://www.ruta38envios.com.ar", 
-                callback_fail: "https://www.ruta38envios.com.ar"
+                callback_fail: "https://www.ruta38envios.com.ar",
+                callback_success: "https://www.ruta38envios.com.ar"
             })
         });
 
-        const checkoutData = await checkoutResponse.json();
+        const checkoutText = await checkoutResponse.text();
+        let checkoutData;
+        try {
+            checkoutData = JSON.parse(checkoutText);
+        } catch(e) {
+            return res.status(500).json({ success: false, msg: 'Error Raro en Checkout Ualá: ' + checkoutText.substring(0, 60) });
+        }
 
-        // 5. Devolverle el link a la App
         if (checkoutData && checkoutData.links && checkoutData.links.checkoutLink) {
             return res.status(200).json({ success: true, link: checkoutData.links.checkoutLink });
         } else {
-            console.error("Error Checkout Ualá:", checkoutData);
-            return res.status(400).json({ success: false, msg: 'Ualá no pudo generar el link.' });
+            return res.status(400).json({ success: false, msg: 'Ualá no dio el link: ' + JSON.stringify(checkoutData).substring(0, 100) });
         }
 
     } catch (error) {
-        console.error("Error Servidor Vercel:", error);
-        return res.status(500).json({ success: false, msg: 'Error interno del servidor.' });
+        // Acá está la magia: si Vercel explota, ahora te manda a la pantalla QUÉ explotó
+        return res.status(500).json({ success: false, msg: 'Vercel falló: ' + error.message });
     }
 }
 
