@@ -727,15 +727,25 @@
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
+                // SISTEMA INTELIGENTE DE RENOVACIÓN
                 let diasRestantes = 30;
-                if (data.created_at) {
+                
+                if (data.fecha_vencimiento) {
+                    // Si ya tiene una fecha de vencimiento asignada por el webhook
+                    let fechaVenc = new Date(data.fecha_vencimiento);
+                    let hoy = new Date();
+                    let diferenciaMs = fechaVenc - hoy;
+                    diasRestantes = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
+                } else if (data.created_at) {
+                    // Si NO tiene, usa los 30 días gratis desde la creación original
                     let fechaCreacion = new Date(data.created_at);
                     let hoy = new Date();
                     let diferenciaMs = hoy - fechaCreacion;
                     let diasPasados = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
                     diasRestantes = 30 - diasPasados;
-                    if (diasRestantes < 0) diasRestantes = 0;
                 }
+                
+                if (diasRestantes < 0) diasRestantes = 0;
                 
                 updateDaysUI(diasRestantes);
 
