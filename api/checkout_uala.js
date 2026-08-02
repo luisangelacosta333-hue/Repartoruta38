@@ -1,67 +1,75 @@
 export default async function handler(req, res) {
-    // 1. Damos permiso para que tu app web se pueda conectar sin bloqueos de seguridad (CORS)
+    // 1. Permisos para que la app se conecte sin bloqueos
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    // 2. Solo aceptamos peticiones POST
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, msg: 'Método no permitido' });
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ success: false, msg: 'Método no permitido' });
 
     try {
-        // Obtenemos el nombre del local que viene desde la app
         const { local } = req.body;
+        if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
-        if (!local) {
-            return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
+        // 2. Leemos las 3 variables que YA TENÉS guardadas en Vercel
+        const UALA_USER = process.env.UALA_USERNAME;
+        const UALA_ID = process.env.UALA_CLIENT_ID; 
+        const UALA_SECRET = process.env.UALA_CLIENT_SECRET;
+
+        if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel. Revisá los nombres.' });
         }
 
-        // 3. Acá Vercel lee la llave que subiste a las Variables de Entorno
-        // IMPORTANTE: Asegurate de que en Vercel tu variable se llame UALA_SECRET_KEY
-        const UALA_KEY = process.env.UALA_SECRET_KEY;
+        // 3. PASO 1: Loguearse en Ualá para pedir el Token Temporal
+        const authResponse = await fetch('https://auth.ualabis.com.ar/1/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_name: UALA_USER,
+                client_id: UALA_ID,
+                client_secret_id: UALA_SECRET,
+                grant_type: 'client_credentials'
+            })
+        });
 
-        if (!UALA_KEY) {
-            return res.status(500).json({ success: false, msg: 'Faltan las llaves de Ualá en Vercel' });
+        const authData = await authResponse.json();
+
+        if (!authData.access_token) {
+            console.error("Error Auth Ualá:", authData);
+            return res.status(401).json({ success: false, msg: 'Fallo al iniciar sesión en Ualá. Credenciales inválidas.' });
         }
 
-        // 4. Le pedimos a Ualá Bis que genere el link de cobro por $9.000
-        const respuestaUala = await fetch('https://checkout.ualabis.com.ar/1/checkout', {
+        const accessToken = authData.access_token;
+
+        // 4. PASO 2: Crear el link de pago con el Token que nos acaban de dar
+        const checkoutResponse = await fetch('https://checkout.ualabis.com.ar/1/checkout', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${UALA_KEY}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 amount: "9000.00",
                 description: `Renovación 30 días - Local: ${local}`,
-                // Esta es la URL a la que el cliente volverá si el pago es exitoso
                 callback_success: "https://www.ruta38envios.com.ar", 
                 callback_fail: "https://www.ruta38envios.com.ar"
             })
         });
 
-        const dataUala = await respuestaUala.json();
+        const checkoutData = await checkoutResponse.json();
 
-        // 5. Si Ualá nos devuelve el link correctamente, se lo pasamos al celular
-        if (dataUala && dataUala.links && dataUala.links.checkoutLink) {
-            return res.status(200).json({ 
-                success: true, 
-                link: dataUala.links.checkoutLink 
-            });
+        // 5. Devolverle el link a la App
+        if (checkoutData && checkoutData.links && checkoutData.links.checkoutLink) {
+            return res.status(200).json({ success: true, link: checkoutData.links.checkoutLink });
         } else {
-            console.error("Respuesta de Ualá:", dataUala);
-            return res.status(400).json({ success: false, msg: 'Ualá rechazó la creación del link.' });
+            console.error("Error Checkout Ualá:", checkoutData);
+            return res.status(400).json({ success: false, msg: 'Ualá no pudo generar el link.' });
         }
 
     } catch (error) {
-        console.error("Error en el backend:", error);
-        return res.status(500).json({ success: false, msg: 'El servidor de Vercel falló al procesar el pago.' });
+        console.error("Error Servidor Vercel:", error);
+        return res.status(500).json({ success: false, msg: 'Error interno del servidor.' });
     }
 }
 
