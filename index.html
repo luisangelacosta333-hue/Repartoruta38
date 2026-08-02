@@ -1337,7 +1337,38 @@
 
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
         
-        async function pagarConUala() { try { let res = await fetch('/api/checkout_uala', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ local: cUser }) }); let data = await res.json(); if(data.success) { window.location.href = data.link; } else { alert(data.msg); } } catch(e) { alert("Error de conexión con Ualá"); } }
+        async function pagarConUala() {
+            const loadingText = document.getElementById('uala-loading');
+            const payBtn = document.querySelector('button[onclick="pagarConUala()"]');
+            
+            if(loadingText) loadingText.style.display = 'block';
+            if(payBtn) payBtn.style.display = 'none';
+
+            try {
+                let res = await fetch('/api/checkout_uala', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ local: cUser }) 
+                });
+                
+                let data = await res.json();
+                
+                if (data && data.success && data.link) {
+                    window.location.href = data.link;
+                } else if (data && data.link) {
+                    window.location.href = data.link;
+                } else {
+                    let errorMsg = (data && data.msg) ? data.msg : "No se pudo generar el link de pago.";
+                    alert("❌ " + errorMsg);
+                    if(loadingText) loadingText.style.display = 'none';
+                    if(payBtn) payBtn.style.display = 'flex';
+                }
+            } catch(e) {
+                alert("❌ Error de conexión con Vercel (/api/checkout_uala). Verifica la función backend.");
+                if(loadingText) loadingText.style.display = 'none';
+                if(payBtn) payBtn.style.display = 'flex';
+            }
+        }
         
         function verifyAdminPin() { 
             let p = document.getElementById('pin-input').value; 
