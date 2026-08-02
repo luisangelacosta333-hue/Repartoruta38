@@ -593,19 +593,28 @@
             return str.trim();
         }
 
-        async function syncToCloud() {
+        // BISTURÍ: MOTOR DE GUARDADO CON AMORTIGUADOR DE 800MS (DEBOUNCE)
+        let syncTimeout = null;
+        function syncToCloud() {
             if (!cUser) return;
-            window.isSyncing = true;
-            window.lastLocalUpdate = Date.now(); // Marca el tiempo exacto en que se guardó localmente
-            let payload = {
-                inventory: getLocalInventory(),
-                clients: getLocalClients(),
-                logs: getLocalLogs(),
-                deletedProducts: getLocalDeletedProducts()
-            };
-            try { await _supabase.from('usuarios').update({ app_data: payload }).eq('local', cUser); } 
-            catch(e) { console.error("Error sincronizando", e); }
-            finally { window.isSyncing = false; }
+            window.lastLocalUpdate = Date.now(); 
+            window.isSyncing = true; 
+            
+            if(syncTimeout) clearTimeout(syncTimeout);
+            
+            syncTimeout = setTimeout(async () => {
+                let payload = {
+                    inventory: getLocalInventory(),
+                    clients: getLocalClients(),
+                    logs: getLocalLogs(),
+                    deletedProducts: getLocalDeletedProducts()
+                };
+                try { 
+                    await _supabase.from('usuarios').update({ app_data: payload }).eq('local', cUser); 
+                } 
+                catch(e) { console.error("Error sincronizando", e); }
+                finally { window.isSyncing = false; }
+            }, 800); 
         }
 
         function saveLocalLogs(log) {
@@ -985,8 +994,7 @@
             dbState.logs.unshift(newLog);
 
             if (selProd && codeStr !== 'VARIOS') {
-                let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
-                let item = invList.find(i => normCode(i.code) === normCode(codeStr));
+                let item = dbState.inventory.find(i => normCode(i.code) === normCode(codeStr));
                 if (item) {
                     item.stock = (parseFloat(item.stock) || 0) - finalQty;
                 }
@@ -1086,7 +1094,6 @@
             listContainer.innerHTML = html || '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No hay clientes en la lista. Creá uno arriba.</div>';
         }
 
-        // BISTURÍ: RENDERIZADO DEL INVENTARIO COMPLETO (PANTALLA DEL DUEÑO)
         window.renderAdminInventory = function() {
             let listAdmin = document.getElementById('adm-inventory-list-modal');
             if(!listAdmin) return;
@@ -1511,6 +1518,53 @@
             } 
         }
 
+        function toggleGps(force = false) { 
+            let btn = document.getElementById('btn-gps'); 
+            
+            let turningOn = force ? true : !window.gpsActive;
+
+            if(turningOn) { 
+                btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>BUSCANDO...'; 
+                btn.style.borderColor = "#0ea5e9";
+                btn.style.color = "white";
+                btn.style.background = "#0ea5e9";
+                window.gpsActive = true;
+                
+                if(navigator.geolocation) { 
+                    const enviarPosicion = (p) => {
+                        btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
+                        let payload = { local: cUser, actor: cUser, lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() };
+                        dbState.last_gps = payload; renderAllData();
+                    };
+
+                    navigator.geolocation.getCurrentPosition(enviarPosicion, err => { 
+                        if(!force) alert("⚠️ Activa la Ubicación en tu celular y dale permisos al navegador. (Asegurate de estar usando HTTPS)."); 
+                        btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                        btn.style.borderColor = "#e2e8f0"; btn.style.background = "#ffffff"; btn.style.color = "#1e293b"; window.gpsActive = false;
+                    }, { enableHighAccuracy: true, timeout: 10000 }); 
+                    
+                    if(!window.gpsInterval) { 
+                        window.gpsInterval = setInterval(() => { 
+                            if(window.gpsActive) {
+                                navigator.geolocation.getCurrentPosition(enviarPosicion, err => {}, { enableHighAccuracy: true }); 
+                            }
+                        }, 8000); 
+                    }
+                } else { 
+                    if(!force) alert("Tu celular no soporta GPS."); 
+                    window.gpsActive = false;
+                    btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF';
+                    btn.style.background = "#ffffff"; btn.style.color = "#1e293b";
+                }
+            } else { 
+                btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                btn.style.borderColor = "#e2e8f0"; btn.style.color = "#1e293b"; btn.style.background = "#ffffff";
+                window.gpsActive = false; 
+                clearInterval(window.gpsInterval); 
+                window.gpsInterval = null;
+            } 
+        }
+        
         // BISTURÍ: CARGA CORRECTA DE PRODUCTO NUEVO Y REFRESCO DE INVENTARIO
         function uploadMerchandise() { 
             let codeVal = document.getElementById('add-code').value.trim(); 
