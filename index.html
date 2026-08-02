@@ -1620,6 +1620,7 @@
         
         async function closeRegister() { 
             if(!confirm("¿Cerrar Turno, descargar PDF y enviar reporte por WhatsApp?")) return; 
+            
             let tEfe = document.getElementById('adm-cash') ? document.getElementById('adm-cash').innerText : '$0'; 
             let tTra = document.getElementById('adm-transf') ? document.getElementById('adm-transf').innerText : '$0'; 
             let tFia = document.getElementById('adm-fiado') ? document.getElementById('adm-fiado').innerText : '$0'; 
@@ -1627,16 +1628,18 @@
             if (dbState.logs && dbState.logs.length > 0) { descargarPDFDay(); } 
             
             setTimeout(() => { 
-                document.getElementById('adm-cash').innerText = "$0"; 
-                document.getElementById('adm-transf').innerText = "$0"; 
-                document.getElementById('adm-fiado').innerText = "$0"; 
-                document.getElementById('audit-logs-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>No hay transacciones aún.</p>"; 
-                document.getElementById('chofer-logs-modal-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>Tus ventas aprobadas aparecerán aquí.</p>"; 
-                document.getElementById('calc-total').innerText = "0"; 
-                
-                localStorage.removeItem('ruta38_logs_' + cUser);
+                // Vaciamos los logs localmente
                 dbState.logs = [];
+                localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify([]));
+                
+                // BLANQUEAMOS LA NUBE: Clave para que el sistema de 5 segundos no vuelva a descargar los datos viejos
+                syncToCloud(); 
 
+                // Forzamos que se redibujen los contadores y las vistas a $0 (excepto fiado que es el histórico de clientes)
+                renderAllData();
+                clearCalc();
+                
+                // Enviamos el mensaje de cierre
                 let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
                 window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); 
             }, 1500); 
