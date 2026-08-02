@@ -193,7 +193,7 @@
         </div>
     </div>
 
-    <!-- CATÁLOGO MODAL FULL SCREEN -->
+    <!-- CATÁLOGO MODAL FULL SCREEN PARA EL CHOFER -->
     <div class="modal" id="catalogo-modal" style="background:#f8fafc; align-items:flex-start;">
         <div style="width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; background: #fdfdfd; overflow: hidden; display: flex; flex-direction: column;">
             
@@ -209,6 +209,43 @@
 
             <div id="catalogo-list-container" style="flex: 1; overflow-y: auto; padding: 15px; display:flex; flex-direction:column; gap:10px; background:#f8fafc;">
                 <!-- Items cargados por JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- NUEVO: MODAL INVENTARIO COMPLETO (PANTALLA COMPLETA DUEÑO) -->
+    <div class="modal" id="admin-inventory-modal" style="background:#f8fafc; align-items:flex-start;">
+        <div style="width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; background: #fdfdfd; overflow: hidden; display: flex; flex-direction: column;">
+            
+            <div style="background: #ffffff; padding: 15px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02); flex-shrink: 0;">
+                <div style="width:24px;"></div>
+                <h2 style="margin:0; color:#0f172a; font-family:'Outfit',sans-serif; font-size: 1.4rem;">📦 Gestión de Inventario</h2>
+                <button style="background:transparent; border:none; font-size:1.5rem; color:#64748b; cursor:pointer;" onclick="document.getElementById('admin-inventory-modal').style.display='none'">×</button>
+            </div>
+
+            <div style="padding: 15px; flex-shrink: 0; background:#ffffff; border-bottom: 1px solid #e2e8f0;">
+                <div style="display:flex; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
+                    <input type="number" id="add-code" class="input-light-admin" placeholder="Cód. Ej: 001" style="flex:1; margin-bottom:0;">
+                </div>
+                <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre del artículo (Ej: Coca Cola)">
+                <div style="display:flex; gap:8px; margin-bottom: 10px;">
+                    <input type="number" id="add-price" class="input-light-admin" placeholder="Precio ($)" style="margin-bottom:0; flex:1;">
+                    <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock" style="margin-bottom:0; flex:1;">
+                    <select id="add-unit" class="input-light-admin" style="margin-bottom:0; flex:1;">
+                        <option value="Unid">Unid</option>
+                        <option value="Kg">Kg</option>
+                    </select>
+                </div>
+                <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">➕ GUARDAR ARTÍCULO</button>
+            </div>
+
+            <div style="padding: 10px 15px 5px; flex-shrink: 0; background:#f8fafc;">
+                <input type="text" id="search-admin-inv" class="input-light-admin" placeholder="🔍 Buscar artículo..." onkeyup="renderAdminInventory()" style="margin-bottom:0; background:#ffffff; border-color:#cbd5e1; font-size:1rem; padding:12px; border-radius:12px;">
+            </div>
+
+            <div id="adm-inventory-list-modal" style="flex: 1; overflow-y: auto; padding: 15px; display:flex; flex-direction:column; gap:10px; background:#f8fafc;">
+                <!-- Tarjetas de admin cargadas por JS -->
             </div>
         </div>
     </div>
@@ -277,7 +314,6 @@
                     <input type="text" id="search-client" class="input-light-admin" placeholder="🔍 Buscar cliente..." style="padding: 14px; font-size: 1rem; border-radius: 12px; border: 1px solid #cbd5e1; background: #ffffff;" onkeyup="renderFiadoClients()">
                 </div>
 
-                <!-- LISTA CON SCROLL -->
                 <div id="fiado-clients-list" style="display:flex; flex-direction:column; gap:12px; padding-bottom:10px; max-height: 55vh; overflow-y: auto;">
                     <!-- Tarjetas inyectadas por JS -->
                 </div>
@@ -313,22 +349,22 @@
                 <h2 style="text-align: center; font-size: 1.4rem; font-weight: 900; margin: 0 0 5px 0; color: #0f172a; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">CREAR CUENTA</h2>
                 <p style="text-align: center; color: #64748b; font-size: 0.85rem; margin-bottom: 20px; font-weight: 600;">30 segundos · Listo para usar</p>
                 
-                <input type="text" id="reg-local" placeholder="Nombre de tu Local" class="input-light">
+                <input type="text" id="reg-local" placeholder="Nombre de tu Local" class="input-light" style="text-transform: uppercase;">
                 <select id="reg-prov" class="input-light">
                     <option value="" disabled selected>Provincia</option>
                     <option>Tucumán</option><option>Buenos Aires</option><option>CABA</option><option>Catamarca</option><option>Chaco</option><option>Chubut</option><option>Córdoba</option><option>Corrientes</option><option>Entre Ríos</option><option>Formosa</option><option>Jujuy</option><option>La Pampa</option><option>La Rioja</option><option>Mendoza</option><option>Misiones</option><option>Neuquén</option><option>Río Negro</option><option>Salta</option><option>San Juan</option><option>San Luis</option><option>Santa Cruz</option><option>Santa Fe</option><option>Santiago del Estero</option><option>Tierra del Fuego</option>
                 </select>
                 <input type="tel" id="reg-phone" placeholder="Tu WhatsApp (Ej: 381...)" class="input-light">
                 
-                <input type="password" id="reg-pin" placeholder="PIN de 4 dígitos (Para Empleados)" class="input-light mask-text" maxlength="4" style="margin-bottom: 12px;">
-                <input type="password" id="reg-admin-pin" placeholder="PIN Secreto (Para Dueño)" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px;">
+                <input type="password" id="reg-pin" placeholder="PIN de Empleado (4 dígitos)" class="input-light mask-text" maxlength="4" style="margin-bottom: 12px;">
+                <input type="password" id="reg-admin-pin" placeholder="PIN Secreto (Para Dueño)" class="input-light mask-text" maxlength="4" style="margin-bottom: 20px; border-color: #0ea5e9;">
                 
                 <button onclick="registerAccount()" class="btn-gradient">✅ Activar cuenta</button>
             </div>
 
             <div class="glass-card-light" style="padding: 20px;">
                 <h2 style="text-align: center; font-size: 1.2rem; font-weight: 900; margin: 0 0 15px 0; color: #0f172a; font-family:'Outfit',sans-serif;">🛡️ YA TENGO CUENTA</h2>
-                <input type="text" id="login-user" placeholder="Nombre del Local" class="input-light" spellcheck="false" style="margin-bottom: 12px;">
+                <input type="text" id="login-user" placeholder="Nombre del Local" class="input-light" spellcheck="false" style="margin-bottom: 12px; text-transform: uppercase;">
                 <input type="password" id="login-pass" placeholder="PIN de Empleado" class="input-light mask-text" style="margin-bottom: 15px;">
                 <button onclick="executeLogin()" style="width:100%; padding:15px; background:rgba(14, 165, 233, 0.05); color:#0ea5e9; font-weight:800; font-size:0.95rem; border:2px solid #0ea5e9; border-radius:14px; text-transform:uppercase; cursor:pointer; transition: 0.2s; font-family:'Outfit',sans-serif;">Entrar a mi caja</button>
             </div>
@@ -384,7 +420,6 @@
                 <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Ideal para soda, bebidas o panaderías. Seguí el recorrido, las ventas y el stock de cada camión o preventista al instante.</p>
             </div>
             
-            <!-- NUEVA CAJA CONTROL TOTAL / LOCALES -->
             <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
                 <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(16,185,129,0.3);">🍕</div>
                 <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Control Total de tu Negocio</h4>
@@ -522,26 +557,12 @@
             <p style="color:#64748b; font-size:0.85rem; padding: 20px 0;">El chofer debe encender el GPS (Botón superior).</p>
         </div>
 
-        <div style="background:#ffffff; padding:25px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+        <!-- BISTURÍ: NUEVA SECCIÓN DE INVENTARIO PARA ABRIR MODAL COMPLETO -->
+        <div style="background:#ffffff; padding:25px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); text-align:center;">
             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #0284c7, #0ea5e9);"></div>
-            <h3 style="margin-bottom:20px; margin-top:0; font-size:1.2rem; font-weight:900; color:#0f172a; font-family: 'Outfit', sans-serif;">📦 Reposición de Inventario</h3>
-            
-            <div style="display:flex; align-items:center; margin-bottom:10px;">
-                <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
-                <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
-            </div>
-            <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
-            <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
-            <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock Cargado">
-            
-            <select id="add-unit" class="input-light-admin">
-                <option value="Unid">Unidades</option>
-                <option value="Kg">Kilogramos</option>
-            </select>
-            
-            <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; margin-top:10px; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">GUARDAR EN INVENTARIO</button>
-            
-            <div id="adm-inventory-list" style="margin-top: 20px; max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
+            <h3 style="margin-bottom:10px; margin-top:0; font-size:1.2rem; font-weight:900; color:#0f172a; font-family: 'Outfit', sans-serif;">📦 Reposición de Inventario</h3>
+            <p style="color:#475569; font-size:0.9rem; margin-bottom:15px; font-weight:500;">Gestioná todos tus artículos, precios y stock en pantalla completa.</p>
+            <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="abrirModalInventario()">📦 ABRIR INVENTARIO COMPLETO</button>
         </div>
     </div>
 
@@ -560,6 +581,7 @@
         let lastCalculatedQty = 1;
         window.gpsActive = false;
         window.isSyncing = false; 
+        window.lastLocalUpdate = 0; // BISTURÍ: BLINDAJE DE TIEMPO PARA GUARDAR ARTÍCULOS
 
         function getTucumanDateFE() { return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric' }); }
         function getTucumanTimeFE() { return new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit' }); }
@@ -574,6 +596,7 @@
         async function syncToCloud() {
             if (!cUser) return;
             window.isSyncing = true;
+            window.lastLocalUpdate = Date.now(); // Marca el tiempo exacto en que se guardó localmente
             let payload = {
                 inventory: getLocalInventory(),
                 clients: getLocalClients(),
@@ -629,17 +652,14 @@
             
             if(!localInput || !pin || !adminPin || !prov || !phone) return alert("Complete todos los datos y ambos PINs."); 
             
-            // Forzamos a mayúsculas para que no haya errores de tipeo
             let local = localInput.toUpperCase();
 
             try {
-                // --- BISTURÍ: PLAN ANTIPÍCARO REAL ---
                 const { data: celData } = await _supabase.from('usuarios').select('phone').eq('phone', phone);
                 if (celData && celData.length > 0) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
                 
                 const { data: locData } = await _supabase.from('usuarios').select('local').eq('local', local);
                 if (locData && locData.length > 0) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
-                // --- FIN ANTIPÍCARO ---
 
                 const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
                 
@@ -662,7 +682,6 @@
             
             if(!localInput || !pin) return alert("Ingresá tus datos.");
             
-            // Forzamos a mayúsculas igual que en el registro
             let local = localInput.toUpperCase();
             
             try {
@@ -721,7 +740,9 @@
 
                 if (!window.syncInterval) {
                     window.syncInterval = setInterval(async () => {
-                        if (window.isSyncing) return; 
+                        // BISTURÍ: Da 10 segundos de gracia antes de intentar sobreescribir desde la nube
+                        if (window.isSyncing || (Date.now() - window.lastLocalUpdate < 10000)) return; 
+                        
                         try {
                             const { data, error } = await _supabase.from('usuarios').select('app_data').eq('local', cUser).single();
                             if (data && data.app_data) {
@@ -742,6 +763,7 @@
                                     localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cd.deletedProducts || []));
                                     
                                     renderAllData();
+                                    if(typeof renderAdminInventory === 'function') renderAdminInventory();
                                 }
                             }
                         } catch(e) {}
@@ -963,7 +985,8 @@
             dbState.logs.unshift(newLog);
 
             if (selProd && codeStr !== 'VARIOS') {
-                let item = dbState.inventory.find(i => normCode(i.code) === normCode(codeStr));
+                let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
+                let item = invList.find(i => normCode(i.code) === normCode(codeStr));
                 if (item) {
                     item.stock = (parseFloat(item.stock) || 0) - finalQty;
                 }
@@ -1063,8 +1086,84 @@
             listContainer.innerHTML = html || '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No hay clientes en la lista. Creá uno arriba.</div>';
         }
 
-        function renderAllData() {
+        // BISTURÍ: RENDERIZADO DEL INVENTARIO COMPLETO (PANTALLA DEL DUEÑO)
+        window.renderAdminInventory = function() {
+            let listAdmin = document.getElementById('adm-inventory-list-modal');
+            if(!listAdmin) return;
+            
+            let searchTerm = (document.getElementById('search-admin-inv') ? document.getElementById('search-admin-inv').value.toLowerCase() : '');
             let adminInvHtml = '';
+
+            try {
+                let invList = [];
+                if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
+                else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
+                
+                let delProds = getLocalDeletedProducts();
+                invList = invList.filter(i => !delProds.includes(normCode(i.code)));
+
+                let uniqueInv = [];
+                let seenCodes = new Set();
+                
+                invList.forEach(i => {
+                    let clean = normCode(i.code);
+                    i.code = 'ART-' + clean; 
+                    if(!seenCodes.has(clean)) {
+                        seenCodes.add(clean);
+                        uniqueInv.push(i);
+                    }
+                });
+                
+                invList = uniqueInv; 
+
+                invList.sort((a,b) => {
+                    let numA = parseInt(normCode(a.code)) || 0;
+                    let numB = parseInt(normCode(b.code)) || 0;
+                    return numA - numB;
+                });
+
+                let filtered = invList.filter(i => {
+                    if(!searchTerm) return true;
+                    return String(i.name).toLowerCase().includes(searchTerm) || String(i.code).toLowerCase().includes(searchTerm);
+                });
+
+                if(filtered.length > 0) {
+                    filtered.forEach(i => {
+                        let pStock = parseFloat(i.stock) || 0;
+                        let pPrice = parseFloat(i.price) || 0;
+                        let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
+                        
+                        adminInvHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:15px; border-radius:14px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02); transition:0.2s;">
+                            <div>
+                                <div style="color:#0f172a; font-size:1.1rem; font-weight:900; font-family:'Outfit',sans-serif;">${i.code}</div>
+                                <div style="color:#475569; font-size:0.95rem; font-weight:600; margin-top:2px;">${i.name}</div>
+                                <div style="color:#0ea5e9; font-size:1rem; font-weight:900; margin-top:6px;">$${pPrice} <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">/ ${i.measure_unit}</span></div>
+                            </div>
+                            <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                                <div style="text-align:right;">
+                                    <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:2px;">Stock</div>
+                                    <div style="color:#10b981; font-weight:900; font-size:1.4rem; font-family:'Outfit',sans-serif; line-height:1;">${stockDisplay}</div>
+                                </div>
+                                <button onclick="eliminarProducto('${i.code}')" style="background:#ffe4e6; border:1px solid #fda4af; border-radius:8px; color:#e11d48; padding:6px 16px; cursor:pointer; font-weight:800; font-size:0.8rem; text-transform:uppercase;">Borrar</button>
+                            </div>
+                        </div>`;
+                    });
+                } else {
+                    adminInvHtml = '<div style="text-align:center; padding:15px; color:#64748b; font-size:0.9rem; font-weight:600;">No se encontraron artículos.</div>';
+                }
+            } catch(e) { console.error("Error al renderizar el inventario Admin", e); }
+
+            listAdmin.innerHTML = adminInvHtml;
+        }
+
+        window.abrirModalInventario = function() {
+            document.getElementById('admin-inventory-modal').style.display = 'flex';
+            document.getElementById('search-admin-inv').value = '';
+            renderAdminInventory();
+        }
+
+        function renderAllData() {
             try {
                 let invList = [];
                 if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
@@ -1089,14 +1188,6 @@
                 invList = uniqueInv; 
 
                 if(invList.length > 0) {
-                    invList.forEach(i => {
-                        let pStock = parseFloat(i.stock) || 0;
-                        let pPrice = parseFloat(i.price) || 0;
-                        let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
-                        
-                        adminInvHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:12px; border-radius:12px; margin-top:10px; border:1px solid #e2e8f0;"><div><div style="color:#0f172a; font-weight:800; font-family:'Outfit',sans-serif;">${i.code} - ${i.name}</div><div style="color:#0ea5e9; font-size:0.85rem; font-weight:600;">$${pPrice} / ${i.measure_unit}</div></div><div style="text-align:right; display:flex; gap:12px; align-items:center;"><div style="color:#10b981; font-weight:900; font-size:1.2rem; font-family:'Outfit',sans-serif;">${stockDisplay}</div><button onclick="eliminarProducto('${i.code}')" style="background:#ffe4e6; border:none; border-radius:8px; color:#e11d48; padding:6px 12px; cursor:pointer;">🗑️</button></div></div>`;
-                    });
-
                     if(invList.length === 1 && !selProd) {
                         selProd = { code: invList[0].code, name: invList[0].name, price: parseFloat(invList[0].price), unit: invList[0].measure_unit };
                         
@@ -1108,12 +1199,9 @@
                         document.getElementById('calc-preview').innerText = `${selProd.code} - ${selProd.name} | $${selProd.price} × `; 
                     }
                 }
-            } catch(e) { console.error("Error al renderizar el inventario", e); }
+            } catch(e) { console.error("Error al procesar el inventario", e); }
             
             renderMainScreenProduct();
-            
-            let listAdmin = document.getElementById('adm-inventory-list');
-            if(listAdmin) listAdmin.innerHTML = adminInvHtml || '<div style="text-align:center; padding:15px; color:#64748b; font-size:0.85rem; font-weight:600;">Sin stock cargado.</div>';
 
             let deudoresHtml = '';
             try {
@@ -1203,7 +1291,6 @@
             let chfLogs = document.getElementById('chofer-logs-modal-container');
             if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
 
-            // --- CÓDIGO PARA MOSTRAR EL MAPA EN EL PANEL ADMIN ---
             let admGps = document.getElementById('adm-gps');
             if (admGps) {
                 if (dbState.last_gps && dbState.last_gps.lat) {
@@ -1424,53 +1511,7 @@
             } 
         }
 
-        function toggleGps(force = false) { 
-            let btn = document.getElementById('btn-gps'); 
-            
-            let turningOn = force ? true : !window.gpsActive;
-
-            if(turningOn) { 
-                btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>BUSCANDO...'; 
-                btn.style.borderColor = "#0ea5e9";
-                btn.style.color = "white";
-                btn.style.background = "#0ea5e9";
-                window.gpsActive = true;
-                
-                if(navigator.geolocation) { 
-                    const enviarPosicion = (p) => {
-                        btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
-                        let payload = { local: cUser, actor: cUser, lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() };
-                        dbState.last_gps = payload; renderAllData();
-                    };
-
-                    navigator.geolocation.getCurrentPosition(enviarPosicion, err => { 
-                        if(!force) alert("⚠️ Activa la Ubicación en tu celular y dale permisos al navegador. (Asegurate de estar usando HTTPS)."); 
-                        btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
-                        btn.style.borderColor = "#e2e8f0"; btn.style.background = "#ffffff"; btn.style.color = "#1e293b"; window.gpsActive = false;
-                    }, { enableHighAccuracy: true, timeout: 10000 }); 
-                    
-                    if(!window.gpsInterval) { 
-                        window.gpsInterval = setInterval(() => { 
-                            if(window.gpsActive) {
-                                navigator.geolocation.getCurrentPosition(enviarPosicion, err => {}, { enableHighAccuracy: true }); 
-                            }
-                        }, 8000); 
-                    }
-                } else { 
-                    if(!force) alert("Tu celular no soporta GPS."); 
-                    window.gpsActive = false;
-                    btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF';
-                    btn.style.background = "#ffffff"; btn.style.color = "#1e293b";
-                }
-            } else { 
-                btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
-                btn.style.borderColor = "#e2e8f0"; btn.style.color = "#1e293b"; btn.style.background = "#ffffff";
-                window.gpsActive = false; 
-                clearInterval(window.gpsInterval); 
-                window.gpsInterval = null;
-            } 
-        }
-        
+        // BISTURÍ: CARGA CORRECTA DE PRODUCTO NUEVO Y REFRESCO DE INVENTARIO
         function uploadMerchandise() { 
             let codeVal = document.getElementById('add-code').value.trim(); 
             let name = document.getElementById('add-name').value.trim(); 
@@ -1487,8 +1528,10 @@
             saveLocalDeletedProducts(delProds.filter(c => c !== clean));
 
             let nuevoItem = { code: finalCode, name: name, price: parseFloat(price) || 0, stock: parseFloat(stock) || 0, measure_unit: unit };
-            if(!dbState.inventory) dbState.inventory = [];
-            let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory);
+            
+            let invList = [];
+            if (Array.isArray(dbState.inventory)) { invList = [...dbState.inventory]; } 
+            else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
             
             let existe = invList.findIndex(i => normCode(i.code) === clean);
             if(existe >= 0) { invList[existe] = nuevoItem; } else { invList.push(nuevoItem); }
@@ -1497,6 +1540,7 @@
             saveLocalInventory(dbState.inventory); 
             
             renderAllData(); 
+            if(typeof renderAdminInventory === 'function') renderAdminInventory();
             
             document.getElementById('add-code').value=''; document.getElementById('add-name').value=''; document.getElementById('add-price').value=''; document.getElementById('add-stock').value=''; 
             showToast("✅ Artículo cargado."); 
@@ -1514,6 +1558,7 @@
                 saveLocalInventory(dbState.inventory); 
 
                 renderAllData();
+                if(typeof renderAdminInventory === 'function') renderAdminInventory();
             } 
         }
         
@@ -1558,46 +1603,32 @@
             window.speechSynthesis.speak(speech); 
         }
 
-        // --- LÓGICA DEL BOTÓN DE INSTALACIÓN PWA ---
         let eventoInstalacion;
         const btnInstalar = document.getElementById('btn-instalar-app');
 
-        // El navegador avisa que la app está lista para instalarse
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevenimos que el cartel automático moleste
             e.preventDefault();
-            // Guardamos el evento para usarlo cuando hagan clic en el botón
             eventoInstalacion = e;
-            // Mostramos nuestro botón personalizado
             if (btnInstalar) btnInstalar.style.display = 'block';
         });
 
-        // Qué pasa cuando tocan nuestro botón
         if (btnInstalar) {
             btnInstalar.addEventListener('click', async () => {
                 if (!eventoInstalacion) return;
-                
-                // Mostramos el cartel nativo de instalación de Android/iOS
                 eventoInstalacion.prompt();
-                
-                // Esperamos a ver qué elige el usuario
                 const { outcome } = await eventoInstalacion.userChoice;
                 if (outcome === 'accepted') {
                     console.log('El usuario instaló la app');
-                    btnInstalar.style.display = 'none'; // Ocultamos el botón si ya instaló
+                    btnInstalar.style.display = 'none'; 
                 }
-                
-                // Limpiamos la variable
                 eventoInstalacion = null;
             });
         }
 
-        // Ocultar el botón si detecta que la app ya fue instalada
         window.addEventListener('appinstalled', () => {
             if (btnInstalar) btnInstalar.style.display = 'none';
         });
 
-        // --- MOTOR PARA QUE LA PWA SE PUEDA INSTALAR ---
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(reg => {
