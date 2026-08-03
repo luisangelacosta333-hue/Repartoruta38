@@ -1,6 +1,5 @@
 import https from 'https';
 
-// 1. TRASPLANTAMOS TU FUNCIÓN EXACTA DE "NI UNA MENOS"
 const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
     const o = {
         hostname: h,
@@ -27,7 +26,6 @@ const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
 });
 
 export default async function handler(req, res) {
-    // Permisos CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
@@ -40,19 +38,14 @@ export default async function handler(req, res) {
         const { local } = req.body;
         if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
-        // Leemos las 3 variables de Vercel
         const UALA_USER = process.env.UALA_USERNAME?.trim();
         const UALA_ID = process.env.UALA_CLIENT_ID?.trim(); 
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
 
         if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
-            return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel.' });
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales.' });
         }
 
-        // ==========================================
-        // PASO 1: TOKEN 
-        // Volvimos a tu endpoint original que conecta bien
-        // ==========================================
         const payloadToken = JSON.stringify({
             username: UALA_USER,
             client_id: UALA_ID,
@@ -63,23 +56,17 @@ export default async function handler(req, res) {
         const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error de Token Ualá: ' + JSON.stringify(tk) });
+            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
         }
 
-        // ==========================================
-        // PASO 2: CHECKOUT
-        // ==========================================
-        // Generamos una referencia única (ej: REN-local-1721345678)
-        const timestamp = Date.now();
-        const refUnica = `REN-${local.replace(/[^a-zA-Z0-9]/g, '').substring(0,8)}-${timestamp}`;
-
+        // ACÁ ESTÁ LA MAGIA: external_reference lleva el nombre exacto de tu local
         const payloadCheckout = JSON.stringify({
             amount: "9000.00",
             description: `Renovacion 30 dias - Local: ${local}`,
             callback_success: "https://www.ruta38envios.com.ar",
             callback_fail: "https://www.ruta38envios.com.ar",
             notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala",
-            external_reference: refUnica // Esto suele evitar el 403 de la pasarela
+            external_reference: local 
         });
 
         const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
@@ -89,11 +76,11 @@ export default async function handler(req, res) {
         if (link) {
             return res.status(200).json({ success: true, link: link });
         } else {
-            return res.status(400).json({ success: false, msg: 'Ualá no dio link: ' + JSON.stringify(pg) });
+            return res.status(400).json({ success: false, msg: 'Error de Ualá' });
         }
 
     } catch (error) {
-        return res.status(500).json({ success: false, msg: 'Error de servidor: ' + error.message });
+        return res.status(500).json({ success: false, msg: error.message });
     }
 }
 
