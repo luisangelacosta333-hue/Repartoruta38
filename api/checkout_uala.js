@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-    // Permisos CORS para que la app se conecte libremente
+    // Permisos para que la app se conecte sin bloqueos
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
@@ -21,67 +21,76 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel.' });
         }
 
-        // PASO 1: Crear Token de Autenticación (API v2 oficial de Ualá Bis)
-        const authResponse = await fetch('https://api.ualabis.com.ar/v2/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_name: UALA_USER,
-                client_id: UALA_ID,
-                client_secret_id: UALA_SECRET,
-                grant_type: 'client_credentials'
-            })
-        });
+        // PASO 1: Crear Token de Autenticación con la URL oficial v1
+        let authResponse;
+        try {
+            authResponse = await fetch('https://auth.ualabis.com.ar/1/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_name: UALA_USER,
+                    client_id: UALA_ID,
+                    client_secret_id: UALA_SECRET,
+                    grant_type: 'client_credentials'
+                })
+            });
+        } catch (err) {
+            return res.status(500).json({ success: false, msg: 'Error de red al pedir token: ' + err.message });
+        }
 
         const authText = await authResponse.text();
         let authData;
         try {
             authData = JSON.parse(authText);
         } catch(e) {
-            return res.status(500).json({ success: false, msg: 'Respuesta inválida en Token: ' + authText.substring(0, 50) });
+            return res.status(500).json({ success: false, msg: 'Error raro en Ualá Token: ' + authText.substring(0, 50) });
         }
 
         if (!authData.access_token) {
-            return res.status(401).json({ success: false, msg: 'Ualá rechazó credenciales: ' + (authData.message || 'Error en datos') });
+            return res.status(401).json({ success: false, msg: 'Ualá rechazó tus credenciales. Revisá que el Usuario y Pass en Vercel no tengan espacios al final.' });
         }
 
         const accessToken = authData.access_token;
 
-        // PASO 2: Crear Orden de Pago en Ualá Bis (API v2)
-        const orderResponse = await fetch('https://api.ualabis.com.ar/v2/orders', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                amount: "9000.00",
-                description: `Renovación 30 días - Local: ${local}`,
-                callback_fail: "https://www.ruta38envios.com.ar",
-                callback_success: "https://www.ruta38envios.com.ar",
-                notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala" // Para cuando configuremos la auto-activación
-            })
-        });
+        // PASO 2: Crear Orden de Pago en Ualá Bis con la URL oficial
+        let orderResponse;
+        try {
+            orderResponse = await fetch('https://checkout.ualabis.com.ar/1/checkout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: "9000.00",
+                    description: `Renovación 30 días - Local: ${local}`,
+                    callback_fail: "https://www.ruta38envios.com.ar",
+                    callback_success: "https://www.ruta38envios.com.ar"
+                })
+            });
+        } catch (err) {
+            return res.status(500).json({ success: false, msg: 'Error de red al crear orden: ' + err.message });
+        }
 
         const orderText = await orderResponse.text();
         let orderData;
         try {
             orderData = JSON.parse(orderText);
         } catch(e) {
-            return res.status(500).json({ success: false, msg: 'Respuesta inválida en Orden: ' + orderText.substring(0, 50) });
+            return res.status(500).json({ success: false, msg: 'Error raro en Ualá Checkout: ' + orderText.substring(0, 50) });
         }
 
-        // Devolvemos la URL del Checkout al celular
-        const checkoutUrl = orderData.checkout_link || (orderData.links && orderData.links.checkoutLink) || orderData.links?.checkout;
+        // Buscamos el link de pago que nos devuelve Ualá
+        const checkoutUrl = orderData.links?.checkoutLink || orderData.links?.checkout || orderData.checkout_link;
 
         if (checkoutUrl) {
             return res.status(200).json({ success: true, link: checkoutUrl });
         } else {
-            return res.status(400).json({ success: false, msg: 'Ualá no devolvió link: ' + JSON.stringify(orderData).substring(0, 80) });
+            return res.status(400).json({ success: false, msg: 'Fallo al armar link: ' + JSON.stringify(orderData).substring(0, 80) });
         }
 
     } catch (error) {
-        return res.status(500).json({ success: false, msg: 'Error de servidor Vercel: ' + error.message });
+        return res.status(500).json({ success: false, msg: 'Error general Vercel: ' + error.message });
     }
 }
 
