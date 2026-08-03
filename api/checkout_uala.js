@@ -1,5 +1,6 @@
 import https from 'https';
 
+// 1. TRASPLANTAMOS TU FUNCIÓN EXACTA DE "NI UNA MENOS"
 const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
     const o = {
         hostname: h,
@@ -39,6 +40,7 @@ export default async function handler(req, res) {
         const { local } = req.body;
         if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
+        // Leemos las 3 variables de Vercel
         const UALA_USER = process.env.UALA_USERNAME?.trim();
         const UALA_ID = process.env.UALA_CLIENT_ID?.trim(); 
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
@@ -48,7 +50,8 @@ export default async function handler(req, res) {
         }
 
         // ==========================================
-        // PASO 1: TOKEN (PRODUCCIÓN ARGENTINA)
+        // PASO 1: TOKEN 
+        // Volvimos a tu endpoint original que conecta bien
         // ==========================================
         const payloadToken = JSON.stringify({
             username: UALA_USER,
@@ -57,24 +60,29 @@ export default async function handler(req, res) {
             grant_type: 'client_credentials'
         });
 
-        const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
+        const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
             return res.status(401).json({ success: false, msg: 'Error de Token Ualá: ' + JSON.stringify(tk) });
         }
 
         // ==========================================
-        // PASO 2: CHECKOUT (PRODUCCIÓN ARGENTINA)
+        // PASO 2: CHECKOUT
         // ==========================================
+        // Generamos una referencia única (ej: REN-local-1721345678)
+        const timestamp = Date.now();
+        const refUnica = `REN-${local.replace(/[^a-zA-Z0-9]/g, '').substring(0,8)}-${timestamp}`;
+
         const payloadCheckout = JSON.stringify({
             amount: "9000.00",
             description: `Renovacion 30 dias - Local: ${local}`,
             callback_success: "https://www.ruta38envios.com.ar",
             callback_fail: "https://www.ruta38envios.com.ar",
-            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala"
+            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala",
+            external_reference: refUnica // Esto suele evitar el 403 de la pasarela
         });
 
-        const pg = await hp('checkout.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+        const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
         const link = pg?.links?.checkout_link || pg?.checkout_link;
 
