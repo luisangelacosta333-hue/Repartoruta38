@@ -22,15 +22,15 @@ export default async function handler(req, res) {
         }
 
         // ==========================================
-        // PASO 1: TOKEN (Usando API V1 Estable PROD)
+        // PASO 1: TOKEN (URL y Formato exacto del manual)
         // ==========================================
         let authResponse;
         try {
-            authResponse = await fetch('https://auth.prod.ua.la/1/auth/token', {
+            authResponse = await fetch('https://auth.developers.ar.ua.la/1/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_name: UALA_USER,
+                    username: UALA_USER, // <-- ¡EL GRAN CAMBIO! Sin el guion bajo.
                     client_id: UALA_ID,
                     client_secret_id: UALA_SECRET,
                     grant_type: 'client_credentials'
@@ -49,17 +49,17 @@ export default async function handler(req, res) {
         }
 
         if (!authData.access_token) {
-            return res.status(401).json({ success: false, msg: 'Ualá rechazó credenciales: ' + (authData.description || 'Error de permisos') });
+            return res.status(401).json({ success: false, msg: 'Ualá rechazó credenciales: ' + (authData.description || authData.message || 'Error de datos') });
         }
 
         const accessToken = authData.access_token;
 
         // ==========================================
-        // PASO 2: CREAR ORDEN (Usando API V1 Estable)
+        // PASO 2: CREAR ORDEN (URL oficial)
         // ==========================================
         let orderResponse;
         try {
-            orderResponse = await fetch('https://checkout.prod.ua.la/1/checkout', {
+            orderResponse = await fetch('https://checkout.developers.ar.ua.la/1/checkout', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -68,7 +68,6 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     amount: "9000.00",
                     description: `Renovacion 30 dias - Local: ${local}`,
-                    userName: UALA_USER,
                     callback_fail: "https://www.ruta38envios.com.ar",
                     callback_success: "https://www.ruta38envios.com.ar"
                 })
@@ -85,7 +84,7 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, msg: 'Ualá Orden Rara: ' + orderText.substring(0, 50) });
         }
 
-        // Buscamos el link en la estructura de la API V1
+        // Buscamos el link
         const checkoutUrl = orderData.links?.checkoutLink || orderData.links?.checkout || orderData.checkout_link;
 
         if (checkoutUrl) {
