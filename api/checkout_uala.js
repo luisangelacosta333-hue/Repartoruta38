@@ -50,7 +50,8 @@ export default async function handler(req, res) {
         }
 
         // ==========================================
-        // PASO 1: TOKEN (Igual a Ni una menos)
+        // PASO 1: TOKEN (PRODUCCIÓN)
+        // Apuntando directo a auth.ua.la
         // ==========================================
         const payloadToken = JSON.stringify({
             username: UALA_USER,
@@ -59,15 +60,15 @@ export default async function handler(req, res) {
             grant_type: 'client_credentials'
         });
 
-        const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
+        const tk = await hp('auth.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            // Le saqué el corte para que nos muestre todo el error completo si falla
             return res.status(401).json({ success: false, msg: 'Error de Token Ualá: ' + JSON.stringify(tk) });
         }
 
         // ==========================================
-        // PASO 2: CHECKOUT (Igual a Ni una menos)
+        // PASO 2: CHECKOUT (PRODUCCIÓN)
+        // Apuntando directo a checkout.ua.la
         // ==========================================
         const payloadCheckout = JSON.stringify({
             amount: "9000.00",
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
             notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala" // Campo exigido
         });
 
-        const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+        const pg = await hp('checkout.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
         const link = pg?.links?.checkout_link || pg?.checkout_link;
 
@@ -91,4 +92,3 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, msg: 'Error de servidor: ' + error.message });
     }
 }
-
