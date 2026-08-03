@@ -43,7 +43,7 @@ export default async function handler(req, res) {
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
 
         if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
-            return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel.' });
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales.' });
         }
 
         const payloadToken = JSON.stringify({
@@ -56,11 +56,13 @@ export default async function handler(req, res) {
         const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error de Token Ualá' });
+            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
         }
 
-        // LA SOLUCIÓN: Unimos el nombre del local con el reloj para que NUNCA se repita
-        const refUnica = `${local}___${Date.now()}`;
+        // Convertimos el nombre a formato Hexadecimal (puros números y letras alfanuméricas)
+        // para que la pasarela de Ualá no explote por caracteres especiales o espacios.
+        const hexLocal = Buffer.from(local).toString('hex');
+        const refUnica = `${hexLocal}-${Date.now()}`;
 
         const payloadCheckout = JSON.stringify({
             amount: "9000.00",
@@ -78,11 +80,11 @@ export default async function handler(req, res) {
         if (link) {
             return res.status(200).json({ success: true, link: link });
         } else {
-            return res.status(400).json({ success: false, msg: 'Error de Ualá' });
+            // AHORA TE MUESTRA EL ERROR REAL SI UALÁ RECHAZA LA CONEXIÓN
+            return res.status(400).json({ success: false, msg: 'Error de Ualá: ' + JSON.stringify(pg) });
         }
 
     } catch (error) {
-        return res.status(500).json({ success: false, msg: 'Error de servidor: ' + error.message });
+        return res.status(500).json({ success: false, msg: error.message });
     }
 }
-
