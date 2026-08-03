@@ -7,9 +7,10 @@ export default async function handler(req, res) {
         if (body && body.status && body.status.toUpperCase() === 'APPROVED') {
             
             const extRef = body.external_reference || "";
-            // Separamos la fecha y recuperamos los espacios del nombre del local
-            const localNameConGuiones = extRef.split('-')[0]; 
-            const localName = localNameConGuiones.replace(/_/g, ' ');
+            const hexLocal = extRef.split('-')[0]; 
+            
+            // "Desencriptamos" el código Hexadecimal que mandamos, devolviéndolo al nombre original
+            const localName = Buffer.from(hexLocal, 'hex').toString('utf8');
 
             if (localName) {
                 const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co';
