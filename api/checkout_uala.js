@@ -1,5 +1,33 @@
+import https from 'https';
+
+// 1. TRASPLANTAMOS TU FUNCIÓN EXACTA DE "NI UNA MENOS"
+const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
+    const o = {
+        hostname: h,
+        port: 443,
+        path: p,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(d),
+            ...(a ? { Authorization: a } : {})
+        }
+    };
+    const q = https.request(o, r => {
+        let c = '';
+        r.setEncoding('utf8');
+        r.on('data', x => c += x);
+        r.on('end', () => {
+            try { rs(JSON.parse(c)); } catch { rs(c); }
+        });
+    });
+    q.on('error', rj);
+    q.write(d);
+    q.end();
+});
+
 export default async function handler(req, res) {
-    // Permisos CORS para la app
+    // Permisos CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
@@ -12,7 +40,7 @@ export default async function handler(req, res) {
         const { local } = req.body;
         if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
-        // Leemos las 3 variables de Vercel usando .trim() exactamente como en Ni una Menos
+        // Leemos las 3 variables de Vercel
         const UALA_USER = process.env.UALA_USERNAME?.trim();
         const UALA_ID = process.env.UALA_CLIENT_ID?.trim(); 
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
@@ -22,57 +50,41 @@ export default async function handler(req, res) {
         }
 
         // ==========================================
-        // PASO 1: TOKEN (Ruta exacta de Ni una Menos)
+        // PASO 1: TOKEN (Igual a Ni una menos)
         // ==========================================
-        const authResponse = await fetch('https://auth.developers.ar.ua.la/v2/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: UALA_USER,
-                client_id: UALA_ID,
-                client_secret_id: UALA_SECRET,
-                grant_type: 'client_credentials'
-            })
+        const payloadToken = JSON.stringify({
+            username: UALA_USER,
+            client_id: UALA_ID,
+            client_secret_id: UALA_SECRET,
+            grant_type: 'client_credentials'
         });
 
-        const authText = await authResponse.text();
-        let authData;
-        try { authData = JSON.parse(authText); } catch(e) { }
+        const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
-        if (!authData || !authData.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error de Token Ualá: ' + authText.substring(0, 50) });
+        if (!tk || !tk.access_token) {
+            // Le saqué el corte para que nos muestre todo el error completo si falla
+            return res.status(401).json({ success: false, msg: 'Error de Token Ualá: ' + JSON.stringify(tk) });
         }
 
-        const accessToken = authData.access_token;
-
         // ==========================================
-        // PASO 2: CHECKOUT (Ruta exacta de Ni una Menos)
+        // PASO 2: CHECKOUT (Igual a Ni una menos)
         // ==========================================
-        const orderResponse = await fetch('https://checkout.developers.ar.ua.la/v2/api/checkout', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                amount: "9000.00",
-                description: `Renovacion 30 dias - Local: ${local}`,
-                callback_fail: "https://www.ruta38envios.com.ar",
-                callback_success: "https://www.ruta38envios.com.ar"
-            })
+        const payloadCheckout = JSON.stringify({
+            amount: "9000.00",
+            description: `Renovacion 30 dias - Local: ${local}`,
+            callback_success: "https://www.ruta38envios.com.ar",
+            callback_fail: "https://www.ruta38envios.com.ar",
+            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala" // Campo exigido
         });
 
-        const orderText = await orderResponse.text();
-        let orderData;
-        try { orderData = JSON.parse(orderText); } catch(e) {}
+        const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
-        // Buscamos el link exactamente como lo busca Ni una Menos
-        const checkoutUrl = orderData?.links?.checkout_link || orderData?.checkout_link;
+        const link = pg?.links?.checkout_link || pg?.checkout_link;
 
-        if (checkoutUrl) {
-            return res.status(200).json({ success: true, link: checkoutUrl });
+        if (link) {
+            return res.status(200).json({ success: true, link: link });
         } else {
-            return res.status(400).json({ success: false, msg: 'Ualá no devolvió link: ' + orderText.substring(0, 80) });
+            return res.status(400).json({ success: false, msg: 'Ualá no dio link: ' + JSON.stringify(pg) });
         }
 
     } catch (error) {
