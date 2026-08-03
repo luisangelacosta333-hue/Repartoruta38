@@ -22,15 +22,15 @@ export default async function handler(req, res) {
         }
 
         // ==========================================
-        // PASO 1: TOKEN (URL y Formato exacto del manual)
+        // PASO 1: TOKEN (Dirección PROD que funcionó + username correcto)
         // ==========================================
         let authResponse;
         try {
-            authResponse = await fetch('https://auth.developers.ar.ua.la/1/auth/token', {
+            authResponse = await fetch('https://auth.prod.ua.la/1/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username: UALA_USER, // <-- ¡EL GRAN CAMBIO! Sin el guion bajo.
+                    username: UALA_USER,  // <-- ¡Escrito perfecto como dice el manual!
                     client_id: UALA_ID,
                     client_secret_id: UALA_SECRET,
                     grant_type: 'client_credentials'
@@ -49,17 +49,17 @@ export default async function handler(req, res) {
         }
 
         if (!authData.access_token) {
-            return res.status(401).json({ success: false, msg: 'Ualá rechazó credenciales: ' + (authData.description || authData.message || 'Error de datos') });
+            return res.status(401).json({ success: false, msg: 'Ualá rechazó credenciales: ' + (authData.description || authData.message || 'Datos incorrectos') });
         }
 
         const accessToken = authData.access_token;
 
         // ==========================================
-        // PASO 2: CREAR ORDEN (URL oficial)
+        // PASO 2: CREAR ORDEN (Dirección PROD)
         // ==========================================
         let orderResponse;
         try {
-            orderResponse = await fetch('https://checkout.developers.ar.ua.la/1/checkout', {
+            orderResponse = await fetch('https://checkout.prod.ua.la/1/checkout', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -68,6 +68,7 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     amount: "9000.00",
                     description: `Renovacion 30 dias - Local: ${local}`,
+                    userName: UALA_USER,
                     callback_fail: "https://www.ruta38envios.com.ar",
                     callback_success: "https://www.ruta38envios.com.ar"
                 })
