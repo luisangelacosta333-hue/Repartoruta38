@@ -43,7 +43,7 @@ export default async function handler(req, res) {
         const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
 
         if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
-            return res.status(500).json({ success: false, msg: 'Faltan credenciales.' });
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel.' });
         }
 
         const payloadToken = JSON.stringify({
@@ -56,17 +56,19 @@ export default async function handler(req, res) {
         const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
+            return res.status(401).json({ success: false, msg: 'Error de Token Ualá' });
         }
 
-        // ACÁ ESTÁ LA MAGIA: external_reference lleva el nombre exacto de tu local
+        // LA SOLUCIÓN: Unimos el nombre del local con el reloj para que NUNCA se repita
+        const refUnica = `${local}___${Date.now()}`;
+
         const payloadCheckout = JSON.stringify({
             amount: "9000.00",
             description: `Renovacion 30 dias - Local: ${local}`,
             callback_success: "https://www.ruta38envios.com.ar",
             callback_fail: "https://www.ruta38envios.com.ar",
             notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala",
-            external_reference: local 
+            external_reference: refUnica 
         });
 
         const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
@@ -80,7 +82,7 @@ export default async function handler(req, res) {
         }
 
     } catch (error) {
-        return res.status(500).json({ success: false, msg: error.message });
+        return res.status(500).json({ success: false, msg: 'Error de servidor: ' + error.message });
     }
 }
 
