@@ -21,10 +21,10 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, msg: 'Faltan credenciales de Ualá en Vercel.' });
         }
 
-        // PASO 1: Crear Token de Autenticación con la URL oficial v1
+        // PASO 1: Crear Token de Autenticación con la URL oficial de la API v2
         let authResponse;
         try {
-            authResponse = await fetch('https://auth.ualabis.com.ar/1/auth/token', {
+            authResponse = await fetch('https://api.ualabis.com.ar/v2/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -43,19 +43,19 @@ export default async function handler(req, res) {
         try {
             authData = JSON.parse(authText);
         } catch(e) {
-            return res.status(500).json({ success: false, msg: 'Error raro en Ualá Token: ' + authText.substring(0, 50) });
+            return res.status(500).json({ success: false, msg: 'Error raro en Token v2: ' + authText.substring(0, 50) });
         }
 
         if (!authData.access_token) {
-            return res.status(401).json({ success: false, msg: 'Ualá rechazó tus credenciales. Revisá que el Usuario y Pass en Vercel no tengan espacios al final.' });
+            return res.status(401).json({ success: false, msg: 'Ualá rechazó las credenciales v2. Revisá en Vercel.' });
         }
 
         const accessToken = authData.access_token;
 
-        // PASO 2: Crear Orden de Pago en Ualá Bis con la URL oficial
+        // PASO 2: Crear Orden de Pago en Ualá Bis con la URL oficial de la API v2
         let orderResponse;
         try {
-            orderResponse = await fetch('https://checkout.ualabis.com.ar/1/checkout', {
+            orderResponse = await fetch('https://api.ualabis.com.ar/v2/orders', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -77,16 +77,16 @@ export default async function handler(req, res) {
         try {
             orderData = JSON.parse(orderText);
         } catch(e) {
-            return res.status(500).json({ success: false, msg: 'Error raro en Ualá Checkout: ' + orderText.substring(0, 50) });
+            return res.status(500).json({ success: false, msg: 'Error raro en Orden v2: ' + orderText.substring(0, 50) });
         }
 
-        // Buscamos el link de pago que nos devuelve Ualá
-        const checkoutUrl = orderData.links?.checkoutLink || orderData.links?.checkout || orderData.checkout_link;
+        // Buscamos el link de pago que nos devuelve la v2 de Ualá
+        const checkoutUrl = orderData.checkout_link || orderData.links?.checkoutLink || orderData.links?.checkout;
 
         if (checkoutUrl) {
             return res.status(200).json({ success: true, link: checkoutUrl });
         } else {
-            return res.status(400).json({ success: false, msg: 'Fallo al armar link: ' + JSON.stringify(orderData).substring(0, 80) });
+            return res.status(400).json({ success: false, msg: 'Ualá v2 no dio el link: ' + JSON.stringify(orderData).substring(0, 80) });
         }
 
     } catch (error) {
