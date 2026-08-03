@@ -665,15 +665,23 @@
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
-                let diasRestantes = 30;
-                if (data.created_at) {
+                // --- NUEVO CÁLCULO DE DÍAS (LEE PAGOS O FECHA DE CREACIÓN) ---
+                let diasRestantes = 0;
+                let hoy = new Date();
+
+                if (data.fecha_vencimiento) {
+                    let fechaVence = new Date(data.fecha_vencimiento);
+                    let diferenciaMs = fechaVence - hoy;
+                    diasRestantes = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
+                } else if (data.created_at) {
                     let fechaCreacion = new Date(data.created_at);
-                    let hoy = new Date();
                     let diferenciaMs = hoy - fechaCreacion;
                     let diasPasados = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
                     diasRestantes = 30 - diasPasados;
-                    if (diasRestantes < 0) diasRestantes = 0;
                 }
+
+                if (diasRestantes < 0) diasRestantes = 0;
+                // -------------------------------------------------------------
                 
                 updateDaysUI(diasRestantes);
 
@@ -1577,3 +1585,4 @@
     </script>
 </body>
 </html>
+
