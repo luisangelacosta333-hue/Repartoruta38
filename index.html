@@ -550,7 +550,7 @@
                 logs: getLocalLogs(),
                 deletedProducts: getLocalDeletedProducts()
             };
-            try { await _supabase.from('usuarios').update({ app_data: payload }).eq('local', cUser); } 
+            try { await _supabase.from('ruta38_usuarios').update({ app_data: payload }).eq('local', cUser); } 
             catch(e) { console.error("Error sincronizando", e); }
             finally { window.isSyncing = false; }
         }
@@ -602,13 +602,13 @@
             let local = localInput.toUpperCase();
 
             try {
-                const { data: celData } = await _supabase.from('usuarios').select('phone').eq('phone', phone);
+                const { data: celData } = await _supabase.from('ruta38_usuarios').select('phone').eq('phone', phone);
                 if (celData && celData.length > 0) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
                 
-                const { data: locData } = await _supabase.from('usuarios').select('local').eq('local', local);
+                const { data: locData } = await _supabase.from('ruta38_usuarios').select('local').eq('local', local);
                 if (locData && locData.length > 0) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
 
-                const { error } = await _supabase.from('usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
+                const { error } = await _supabase.from('ruta38_usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
                 
                 if (error) {
                     alert("Error devuelto por Supabase: " + error.message);
@@ -632,7 +632,7 @@
             let local = localInput.toUpperCase();
             
             try {
-                const { data, error } = await _supabase.from('usuarios').select('*').eq('local', local).eq('pin', pin).single();
+                const { data, error } = await _supabase.from('ruta38_usuarios').select('*').eq('local', local).eq('pin', pin).single();
                 
                 if(error || !data) {
                     alert("❌ Credenciales incorrectas o el PIN no pertenece a este local.");
@@ -694,7 +694,7 @@
                 // IMPLEMENTACIÓN DE SUPABASE REALTIME (Actualización al milisegundo)
                 if(window.realtimeChannel) { _supabase.removeChannel(window.realtimeChannel); }
                 window.realtimeChannel = _supabase.channel('ruta38_realtime_' + cUser)
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios', filter: `local=eq.${cUser}` }, payload => {
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ruta38_usuarios', filter: `local=eq.${cUser}` }, payload => {
                         if (window.isSyncing) return; // Evita sobreescribir si yo fui quien hizo el cambio
                         
                         let cd = payload.new.app_data;
@@ -1284,6 +1284,33 @@
         function elegirGaleria() { document.getElementById('foto-input-galeria').click(); setTimeout(() => { cerrarSheet(); }, 500); }
         function abrirCamaraPaywall() { isPaywallUpload = true; document.getElementById('foto-input-camara').click(); }
         
+        // ========================================================
+        // NUEVA FUNCIÓN: SUBE LA FOTO AL BUCKET DE RUTA 38
+        // ========================================================
+        async function uploadFotoRuta38(base64Str) {
+            try {
+                const base64Data = base64Str.split(',')[1];
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], {type: 'image/jpeg'});
+                
+                const fileName = `${cUser.replace(/\s+/g, '')}/FOTO-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+                
+                // MANDA LA FOTO AL BUCKET NUEVO QUE CREASTE
+                const { data, error } = await _supabase.storage.from('ruta38_comprobantes').upload(fileName, blob);
+                if (error) return base64Str; 
+                
+                // OBTIENE EL LINK CORTO Y LIVIANO
+                const { data: publicUrlData } = _supabase.storage.from('ruta38_comprobantes').getPublicUrl(fileName);
+                return publicUrlData.publicUrl; 
+            } catch(e) { return base64Str; }
+        }
+
+        // ========================================================
+        // FUNCIÓN MODIFICADA PARA PROCESAR LA TRANSFERENCIA
+        // ========================================================
         function processTransferWithPhoto(e) { 
             const f = e.target.files[0]; 
             if(!f) { 
@@ -1296,7 +1323,7 @@
             r.onload = ev => { 
                 const img = new Image(); 
                 img.src = ev.target.result; 
-                img.onload = () => { 
+                img.onload = async () => { 
                     const c = document.createElement('canvas'); 
                     let targetWidth = 320; 
                     let scale = targetWidth / img.width; 
@@ -1304,8 +1331,16 @@
                     c.height = img.height * scale; 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
                     let base64 = c.toDataURL('image/jpeg', 0.20); 
-                    if (isPaywallUpload) { ejecutarValidacionPaywallIA(base64); } 
-                    else { emitPendingTransferHTTP(base64); } 
+                    
+                    if (isPaywallUpload) { 
+                        ejecutarValidacionPaywallIA(base64); 
+                    } else { 
+                        // ACÁ ESTÁ LA MAGIA: Sube a Storage antes de guardar la venta
+                        document.getElementById('calc-preview').innerText = "☁️ SUBIENDO A LA NUBE...";
+                        let urlLiviana = await uploadFotoRuta38(base64);
+                        document.getElementById('calc-preview').innerText = "";
+                        emitPendingTransferHTTP(urlLiviana); 
+                    } 
                 } 
                 img.onerror = () => { emitPendingTransferHTTP(null); }
             } 
@@ -1614,4 +1649,3 @@
     </script>
 </body>
 </html>
-
