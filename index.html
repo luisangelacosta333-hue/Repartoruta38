@@ -665,7 +665,6 @@
                 if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
                 if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
                 
-                // --- NUEVO CÁLCULO DE DÍAS (LEE PAGOS O FECHA DE CREACIÓN) ---
                 let diasRestantes = 0;
                 let hoy = new Date();
 
@@ -681,7 +680,6 @@
                 }
 
                 if (diasRestantes < 0) diasRestantes = 0;
-                // -------------------------------------------------------------
                 
                 updateDaysUI(diasRestantes);
 
@@ -693,34 +691,26 @@
                 renderAllData(); 
                 go('view-chofer');
 
-                if (!window.syncInterval) {
-                    window.syncInterval = setInterval(async () => {
-                        if (window.isSyncing) return; 
-                        try {
-                            const { data, error } = await _supabase.from('usuarios').select('app_data').eq('local', cUser).single();
-                            if (data && data.app_data) {
-                                let cd = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
-                                
-                                let invChanged = JSON.stringify(cd.inventory || []) !== JSON.stringify(dbState.inventory);
-                                let cliChanged = JSON.stringify(cd.clients || []) !== JSON.stringify(dbState.clients);
-                                let logChanged = JSON.stringify(cd.logs || []) !== JSON.stringify(dbState.logs);
-                                
-                                if (invChanged || cliChanged || logChanged) {
-                                    dbState.inventory = cd.inventory || [];
-                                    dbState.clients = cd.clients || [];
-                                    dbState.logs = cd.logs || [];
-                                    
-                                    localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
-                                    localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
-                                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
-                                    localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cd.deletedProducts || []));
-                                    
-                                    renderAllData();
-                                }
-                            }
-                        } catch(e) {}
-                    }, 5000); 
-                }
+                // IMPLEMENTACIÓN DE SUPABASE REALTIME (Actualización al milisegundo)
+                if(window.realtimeChannel) { _supabase.removeChannel(window.realtimeChannel); }
+                window.realtimeChannel = _supabase.channel('ruta38_realtime_' + cUser)
+                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios', filter: `local=eq.${cUser}` }, payload => {
+                        if (window.isSyncing) return; // Evita sobreescribir si yo fui quien hizo el cambio
+                        
+                        let cd = payload.new.app_data;
+                        if(cd) {
+                            dbState.inventory = cd.inventory || [];
+                            dbState.clients = cd.clients || [];
+                            dbState.logs = cd.logs || [];
+                            
+                            localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
+                            localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
+                            localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
+                            localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cd.deletedProducts || []));
+                            
+                            renderAllData();
+                        }
+                    }).subscribe();
                 
             } catch(err) {
                 alert("❌ Error de conexión: " + err.message);
@@ -1204,7 +1194,6 @@
 
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
         
-        // --- FUNCIÓN DEFINITIVA DE UALÁ CON CORRECCIÓN DE VENTANA EXTERNA (_blank) ---
         async function pagarConUala() { 
             document.getElementById('uala-loading').style.display = 'block'; 
             try { 
@@ -1507,30 +1496,70 @@
             } 
         }
         
-        function descargarPDFDay() { try { if(!window.jspdf || !window.jspdf.jsPDF) return alert("Error cargando librería PDF."); const { jsPDF } = window.jspdf; const doc = new jsPDF(); let hoy = getTucumanDateFE(); doc.setFontSize(18); doc.text(`Resumen de Turno Activo - ${cUser}`, 14, 20); doc.setFontSize(10); doc.text(`Generado: ${hoy} ${getTucumanTimeFE()}`, 14, 28); let datosTurno = []; for(let i=0; i<dbState.logs.length; i++) { let tx = dbState.logs[i]; let descStr = tx.description ? String(tx.description) : ""; if(descStr.toLowerCase().includes('cierre de caja')) { if (i !== 0) break; } datosTurno.push(tx); } if(datosTurno.length === 0) return alert("No hay transacciones en el turno actual."); let htmlFilas = []; for(let i=0; i<datosTurno.length; i++) { let tx = datosTurno[i]; let descStr = tx.description ? String(tx.description) : ""; htmlFilas.push([ `${tx.time}`, tx.type.toUpperCase(), tx.method.toUpperCase(), descStr, `$${Math.abs(tx.amount).toLocaleString('es-AR')}` ]); } doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}.pdf`); } catch(e) { alert("Error al generar PDF: " + e.message); } }
+        function descargarPDFDay() { 
+            try { 
+                if(!window.jspdf || !window.jspdf.jsPDF) return alert("Error cargando librería PDF."); 
+                const { jsPDF } = window.jspdf; 
+                const doc = new jsPDF(); 
+                let hoy = getTucumanDateFE(); 
+                doc.setFontSize(18); 
+                doc.text(`Resumen de Turno Activo - ${cUser}`, 14, 20); 
+                doc.setFontSize(10); 
+                doc.text(`Generado: ${hoy} ${getTucumanTimeFE()}`, 14, 28); 
+                
+                let datosTurno = []; 
+                for(let i=0; i<dbState.logs.length; i++) { 
+                    let tx = dbState.logs[i]; 
+                    let descStr = tx.description ? String(tx.description) : ""; 
+                    if(descStr.toLowerCase().includes('cierre de caja')) { if (i !== 0) break; } 
+                    datosTurno.push(tx); 
+                } 
+                if(datosTurno.length === 0) return alert("No hay transacciones en el turno actual."); 
+                
+                let htmlFilas = []; 
+                for(let i=0; i<datosTurno.length; i++) { 
+                    let tx = datosTurno[i]; 
+                    let descStr = tx.description ? String(tx.description) : ""; 
+                    htmlFilas.push([ `${tx.time}`, tx.type.toUpperCase(), tx.method.toUpperCase(), descStr, `$${Math.abs(tx.amount).toLocaleString('es-AR')}` ]); 
+                } 
+                
+                doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); 
+                doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}.pdf`); 
+            } catch(e) { alert("Error al generar PDF: " + e.message); } 
+        }
         
         async function closeRegister() { 
             if(!confirm("¿Cerrar Turno, descargar PDF y enviar reporte por WhatsApp?")) return; 
+            
             let tEfe = document.getElementById('adm-cash') ? document.getElementById('adm-cash').innerText : '$0'; 
             let tTra = document.getElementById('adm-transf') ? document.getElementById('adm-transf').innerText : '$0'; 
             let tFia = document.getElementById('adm-fiado') ? document.getElementById('adm-fiado').innerText : '$0'; 
             
-            if (dbState.logs && dbState.logs.length > 0) { descargarPDFDay(); } 
+            // 1. Descargamos el PDF inmediatamente y de forma síncrona
+            if (dbState.logs && dbState.logs.length > 0) { 
+                descargarPDFDay(); 
+            } 
             
-            setTimeout(() => { 
-                document.getElementById('adm-cash').innerText = "$0"; 
-                document.getElementById('adm-transf').innerText = "$0"; 
-                document.getElementById('adm-fiado').innerText = "$0"; 
-                document.getElementById('audit-logs-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>No hay transacciones aún.</p>"; 
-                document.getElementById('chofer-logs-modal-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>Tus ventas aprobadas aparecerán aquí.</p>"; 
-                document.getElementById('calc-total').innerText = "0"; 
-                
-                localStorage.removeItem('ruta38_logs_' + cUser);
-                dbState.logs = [];
-
-                let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
-                window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); 
-            }, 1500); 
+            // 2. Disparamos la apertura de WhatsApp AHORA MISMO para evadir el bloqueo de seguridad (Popup Blocker)
+            let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
+            let waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+            
+            // Abrimos en la misma ventana para evitar que iOS/Android bloqueen la pestaña nueva
+            window.location.href = waUrl; 
+            
+            // 3. Limpiamos las variables y la pantalla (ocurre mientras el navegador redirige a WhatsApp)
+            document.getElementById('adm-cash').innerText = "$0"; 
+            document.getElementById('adm-transf').innerText = "$0"; 
+            document.getElementById('adm-fiado').innerText = "$0"; 
+            document.getElementById('audit-logs-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>No hay transacciones aún.</p>"; 
+            document.getElementById('chofer-logs-modal-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>Tus ventas aprobadas aparecerán aquí.</p>"; 
+            document.getElementById('calc-total').innerText = "0"; 
+            
+            localStorage.removeItem('ruta38_logs_' + cUser);
+            dbState.logs = [];
+            
+            // 4. Actualizamos la nube obligatoriamente
+            await syncToCloud();
         }
         
         function leerCaracteristicasApp() { 
