@@ -16,10 +16,11 @@ export default async function handler(req, res) {
                 const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co';
                 const supabaseKey = 'sb_publishable_xo7-uUQqtWvEWoLGqqlrsg_rxdroLx4';
 
-                const nuevaFecha = new Date();
-                nuevaFecha.setDate(nuevaFecha.getDate() + 30);
+                // Tomamos el reloj exacto de este segundo (HOY)
+                const fechaHoy = new Date().toISOString();
 
-                await fetch(`${supabaseUrl}/rest/v1/usuarios?local=eq.${encodeURIComponent(localName)}`, {
+                // ACA ESTABA EL ERROR: Apuntamos a ruta38_usuarios en vez de usuarios
+                await fetch(`${supabaseUrl}/rest/v1/ruta38_usuarios?local=eq.${encodeURIComponent(localName)}`, {
                     method: 'PATCH',
                     headers: {
                         'apikey': supabaseKey,
@@ -27,7 +28,8 @@ export default async function handler(req, res) {
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal'
                     },
-                    body: JSON.stringify({ fecha_vencimiento: nuevaFecha.toISOString() })
+                    // Le reseteamos la fecha de creación a HOY para que la app le dé 30 días limpios
+                    body: JSON.stringify({ created_at: fechaHoy })
                 });
             }
         }
