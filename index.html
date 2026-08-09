@@ -595,27 +595,47 @@
             let pin = document.getElementById('reg-pin').value.trim();
             let adminPin = document.getElementById('reg-admin-pin').value.trim();
             let prov = document.getElementById('reg-prov').value;
-            let phone = document.getElementById('reg-phone').value.trim(); 
+            let phoneInput = document.getElementById('reg-phone').value.trim(); 
             
-            if(!localInput || !pin || !adminPin || !prov || !phone) return alert("Complete todos los datos y ambos PINs."); 
+            if(!localInput || !pin || !adminPin || !prov || !phoneInput) return alert("Complete todos los datos y ambos PINs."); 
             
             let local = localInput.toUpperCase();
 
             try {
-                const { data: celData } = await _supabase.from('ruta38_usuarios').select('phone').eq('phone', phone);
-                if (celData && celData.length > 0) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
+                let waLimpio = phoneInput ? String(phoneInput).trim().replace(/\s+/g, '') : '';
                 
-                const { data: locData } = await _supabase.from('ruta38_usuarios').select('local').eq('local', local);
-                if (locData && locData.length > 0) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
+                // 🥷 1. ANTIPÍCARO
+                const { data: celData } = await _supabase.from('ruta38_usuarios').select('id').eq('whatsapp', waLimpio).maybeSingle();
+                if (celData) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
+                
+                const { data: locData } = await _supabase.from('ruta38_usuarios').select('id').eq('local', local).maybeSingle();
+                if (locData) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
 
-                const { error } = await _supabase.from('ruta38_usuarios').insert([{ local: local, pin: pin, admin_pin: adminPin, phone: phone, prov: prov }]);
+                // 🥷 2. MAGIA NINJA: AUTH FANTASMA
+                const correoTrucho = `${waLimpio}@ruta38.com`;
+                const passwordSegura = pin + "IA";
+                const { data: authData, error: authError } = await _supabase.auth.signUp({
+                    email: correoTrucho,
+                    password: passwordSegura
+                });
+
+                if (authError) return alert("❌ Error Auth: " + authError.message);
+
+                // 🥷 3. REGISTRO OFICIAL EN LA BASE DE DATOS
+                const { error } = await _supabase.from('ruta38_usuarios').insert([{ 
+                    local: local, 
+                    pin: pin, 
+                    admin_pin: adminPin, 
+                    whatsapp: waLimpio, 
+                    prov: prov 
+                }]);
                 
                 if (error) {
                     alert("Error devuelto por Supabase: " + error.message);
                     return;
                 }
                 
-                alert("¡Cuenta Creada y Aprobada!"); 
+                alert("¡Cuenta Creada y Blindada con Éxito!"); 
                 document.getElementById('login-user').value = local; 
                 window.scrollTo({top: 0, behavior: 'smooth'}); 
             } catch (err) {
@@ -632,17 +652,29 @@
             let local = localInput.toUpperCase();
             
             try {
-                const { data, error } = await _supabase.from('ruta38_usuarios').select('*').eq('local', local).eq('pin', pin).single();
+                // 🥷 1. BUSCAMOS POR LA VENTANITA DE LECTURA (RLS)
+                const { data, error } = await _supabase.from('ruta38_usuarios').select('*').eq('local', local).eq('pin', pin).maybeSingle();
                 
                 if(error || !data) {
                     alert("❌ Credenciales incorrectas o el PIN no pertenece a este local.");
                     return;
                 }
+
+                // 🥷 2. MAGIA NINJA LOGIN: DESTRABAMOS EL CANDADO OFICIAL (RLS)
+                if (data.whatsapp) {
+                    const correoTrucho = `${data.whatsapp}@ruta38.com`;
+                    const passwordSegura = pin + "IA";
+                    const { error: signInError } = await _supabase.auth.signInWithPassword({
+                        email: correoTrucho,
+                        password: passwordSegura
+                    });
+                    if (signInError) console.warn("Aviso Auth:", signInError.message);
+                }
                 
                 cUser = data.local; 
                 cPin = pin; 
                 cAdminPin = data.admin_pin || "0000"; 
-                cPhone = data.phone || ''; 
+                cPhone = data.whatsapp || ''; 
                 
                 if (data.app_data) {
                     let cloudData = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
@@ -691,11 +723,10 @@
                 renderAllData(); 
                 go('view-chofer');
 
-                // IMPLEMENTACIÓN DE SUPABASE REALTIME (Actualización al milisegundo)
                 if(window.realtimeChannel) { _supabase.removeChannel(window.realtimeChannel); }
                 window.realtimeChannel = _supabase.channel('ruta38_realtime_' + cUser)
                     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ruta38_usuarios', filter: `local=eq.${cUser}` }, payload => {
-                        if (window.isSyncing) return; // Evita sobreescribir si yo fui quien hizo el cambio
+                        if (window.isSyncing) return; 
                         
                         let cd = payload.new.app_data;
                         if(cd) {
@@ -1285,7 +1316,7 @@
         function abrirCamaraPaywall() { isPaywallUpload = true; document.getElementById('foto-input-camara').click(); }
         
         // ========================================================
-        // NUEVA FUNCIÓN: SUBE LA FOTO AL BUCKET DE RUTA 38
+        // SUBE LA FOTO AL BUCKET DE RUTA 38
         // ========================================================
         async function uploadFotoRuta38(base64Str) {
             try {
@@ -1298,18 +1329,16 @@
                 
                 const fileName = `${cUser.replace(/\s+/g, '')}/FOTO-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
                 
-                // MANDA LA FOTO AL BUCKET NUEVO QUE CREASTE
                 const { data, error } = await _supabase.storage.from('ruta38_comprobantes').upload(fileName, blob);
                 if (error) return base64Str; 
                 
-                // OBTIENE EL LINK CORTO Y LIVIANO
                 const { data: publicUrlData } = _supabase.storage.from('ruta38_comprobantes').getPublicUrl(fileName);
                 return publicUrlData.publicUrl; 
             } catch(e) { return base64Str; }
         }
 
         // ========================================================
-        // FUNCIÓN MODIFICADA PARA PROCESAR LA TRANSFERENCIA
+        // PROCESAMIENTO DE LA TRANSFERENCIA
         // ========================================================
         function processTransferWithPhoto(e) { 
             const f = e.target.files[0]; 
@@ -1335,7 +1364,6 @@
                     if (isPaywallUpload) { 
                         ejecutarValidacionPaywallIA(base64); 
                     } else { 
-                        // ACÁ ESTÁ LA MAGIA: Sube a Storage antes de guardar la venta
                         document.getElementById('calc-preview').innerText = "☁️ SUBIENDO A LA NUBE...";
                         let urlLiviana = await uploadFotoRuta38(base64);
                         document.getElementById('calc-preview').innerText = "";
@@ -1570,19 +1598,15 @@
             let tTra = document.getElementById('adm-transf') ? document.getElementById('adm-transf').innerText : '$0'; 
             let tFia = document.getElementById('adm-fiado') ? document.getElementById('adm-fiado').innerText : '$0'; 
             
-            // 1. Descargamos el PDF inmediatamente y de forma síncrona
             if (dbState.logs && dbState.logs.length > 0) { 
                 descargarPDFDay(); 
             } 
             
-            // 2. Disparamos la apertura de WhatsApp AHORA MISMO para evadir el bloqueo de seguridad (Popup Blocker)
             let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
             let waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
             
-            // Abrimos en la misma ventana para evitar que iOS/Android bloqueen la pestaña nueva
             window.location.href = waUrl; 
             
-            // 3. Limpiamos las variables y la pantalla (ocurre mientras el navegador redirige a WhatsApp)
             document.getElementById('adm-cash').innerText = "$0"; 
             document.getElementById('adm-transf').innerText = "$0"; 
             document.getElementById('adm-fiado').innerText = "$0"; 
@@ -1593,7 +1617,6 @@
             localStorage.removeItem('ruta38_logs_' + cUser);
             dbState.logs = [];
             
-            // 4. Actualizamos la nube obligatoriamente
             await syncToCloud();
         }
         
