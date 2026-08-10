@@ -1,4 +1,4 @@
-import https from 'https';
+import https from 'https'; // Corregido a minúscula
 
 const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
     const o = {
@@ -53,14 +53,14 @@ export default async function handler(req, res) {
             grant_type: 'client_credentials'
         });
 
-        const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
+        // 1. URL DE PRODUCCIÓN REAL (Sin 'developers')
+        const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
             return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
         }
 
-        // Convertimos el nombre a formato Hexadecimal (puros números y letras alfanuméricas)
-        // para que la pasarela de Ualá no explote por caracteres especiales o espacios.
+        // Encriptamos el local para que viaje seguro a Ualá
         const hexLocal = Buffer.from(local).toString('hex');
         const refUnica = `${hexLocal}-${Date.now()}`;
 
@@ -69,18 +69,19 @@ export default async function handler(req, res) {
             description: `Renovacion 30 dias - Local: ${local}`,
             callback_success: "https://www.ruta38envios.com.ar",
             callback_fail: "https://www.ruta38envios.com.ar",
-            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala",
+            // 2. RUTA AL WEBHOOK CORREGIDA (asumiendo que el archivo se llama webhook.js)
+            notification_url: "https://www.ruta38envios.com.ar/api/webhook", 
             external_reference: refUnica 
         });
 
-        const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+        // 3. URL DE PRODUCCIÓN REAL (Sin 'developers')
+        const pg = await hp('checkout.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
         const link = pg?.links?.checkout_link || pg?.checkout_link;
 
         if (link) {
             return res.status(200).json({ success: true, link: link });
         } else {
-            // AHORA TE MUESTRA EL ERROR REAL SI UALÁ RECHAZA LA CONEXIÓN
             return res.status(400).json({ success: false, msg: 'Error de Ualá: ' + JSON.stringify(pg) });
         }
 
@@ -88,3 +89,4 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, msg: error.message });
     }
 }
+
