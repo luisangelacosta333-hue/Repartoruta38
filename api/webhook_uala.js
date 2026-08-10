@@ -1,55 +1,91 @@
+import https from 'https';
+
+const hp = (h, p, d, a = '') => new Promise((rs, rj) => {
+    const o = {
+        hostname: h,
+        port: 443,
+        path: p,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(d),
+            ...(a ? { Authorization: a } : {})
+        }
+    };
+    const q = https.request(o, r => {
+        let c = '';
+        r.setEncoding('utf8');
+        r.on('data', x => c += x);
+        r.on('end', () => {
+            try { rs(JSON.parse(c)); } catch { rs(c); }
+        });
+    });
+    q.on('error', rj);
+    q.write(d);
+    q.end();
+});
+
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(200).send('OK');
+    if (req.method !== 'POST') return res.status(405).json({ success: false, msg: 'Método no permitido' });
 
     try {
-        const body = req.body;
-        
-        if (body && body.status && body.status.toUpperCase() === 'APPROVED') {
-            
-            const extRef = body.external_reference || "";
-            const hexLocal = extRef.split('-')[0]; 
-            
-            // "Desencriptamos" el código Hexadecimal que mandamos
-            const localName = Buffer.from(hexLocal, 'hex').toString('utf8');
+        const { local } = req.body;
+        if (!local) return res.status(400).json({ success: false, msg: 'Falta el nombre del local' });
 
-            if (localName) {
-                const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co';
-                
-                // USAMOS LA VARIABLE DE ENTORNO EN VEZ DE LA LLAVE PÚBLICA
-                // Esto es lo que permite saltar el candado RLS que pusiste
-                const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+        const UALA_USER = process.env.UALA_USERNAME?.trim();
+        const UALA_ID = process.env.UALA_CLIENT_ID?.trim(); 
+        const UALA_SECRET = process.env.UALA_CLIENT_SECRET?.trim();
 
-                if (!supabaseKey) {
-                    throw new Error("Falta la llave secreta en Vercel");
-                }
-
-                // Tomamos el reloj exacto de este segundo (HOY)
-                const fechaHoy = new Date().toISOString();
-
-                // Actualizamos usando la llave maestra para que el candado RLS no moleste
-                await fetch(`${supabaseUrl}/rest/v1/ruta38_usuarios?local=eq.${encodeURIComponent(localName)}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'apikey': supabaseKey,
-                        'Authorization': `Bearer ${supabaseKey}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({ created_at: fechaHoy })
-                });
-            }
+        if (!UALA_USER || !UALA_ID || !UALA_SECRET) {
+            return res.status(500).json({ success: false, msg: 'Faltan credenciales.' });
         }
 
-        return res.status(200).json({ success: true });
+        const payloadToken = JSON.stringify({
+            username: UALA_USER,
+            client_id: UALA_ID,
+            client_secret_id: UALA_SECRET,
+            grant_type: 'client_credentials'
+        });
+
+        // 1. URL DE PRODUCCIÓN REAL
+        const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
+
+        if (!tk || !tk.access_token) {
+            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
+        }
+
+        // Encriptamos el local para que viaje seguro a Ualá
+        const hexLocal = Buffer.from(local).toString('hex');
+        const refUnica = `${hexLocal}-${Date.now()}`;
+
+        const payloadCheckout = JSON.stringify({
+            amount: "9000.00",
+            description: `Renovacion 30 dias - Local: ${local}`,
+            callback_success: "https://www.ruta38envios.com.ar",
+            callback_fail: "https://www.ruta38envios.com.ar",
+            // 2. RUTA AL WEBHOOK CORREGIDA
+            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala", 
+            external_reference: refUnica 
+        });
+
+        // 3. URL DE PRODUCCIÓN REAL
+        const pg = await hp('checkout.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+
+        const link = pg?.links?.checkout_link || pg?.checkout_link;
+
+        if (link) {
+            return res.status(200).json({ success: true, link: link });
+        } else {
+            return res.status(400).json({ success: false, msg: 'Error de Ualá: ' + JSON.stringify(pg) });
+        }
 
     } catch (error) {
-        console.error('Error en Webhook:', error);
         return res.status(500).json({ success: false, msg: error.message });
     }
 }
