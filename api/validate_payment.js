@@ -12,12 +12,14 @@ export default async function handler(req, res) {
         if (!local || !fotoBase64) return res.status(400).json({ success: false, msg: 'Faltan datos.' });
 
         const openAiKey = process.env.OPENAI_API_KEY;
-        
-        // 🔥 ACÁ ESTÁ LA SOLUCIÓN: Usamos el nombre exacto de la llave que tenés en Vercel
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+        // 🔥 EL DETECTIVE: Acá descubrimos cuál falta
         if (!openAiKey || !supabaseKey) {
-            return res.status(500).json({ success: false, msg: 'Faltan llaves en el servidor.' });
+            let faltantes = [];
+            if (!openAiKey) faltantes.push("OPENAI_API_KEY");
+            if (!supabaseKey) faltantes.push("SUPABASE_SERVICE_ROLE_KEY");
+            return res.status(500).json({ success: false, msg: 'Falta en Vercel: ' + faltantes.join(' y ') });
         }
 
         // 1. LA ORDEN ESTRICTA PARA OPENAI
