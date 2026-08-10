@@ -212,6 +212,12 @@
             
             <button class="btn-premium" style="background:var(--uala-blue); color:white; margin-bottom:12px; box-shadow: 0 8px 25px rgba(0, 85, 255, 0.4);" onclick="pagarConUala()">💳 PAGAR CON UALÁ</button>
             <p id="uala-loading" style="display:none; color:var(--cyan-accent); font-weight:bold; margin-bottom: 15px; font-size:0.85rem;">Generando link seguro...</p>
+            
+            <!-- EL BOTÓN MÁGICO AÑADIDO ACÁ PARA DESTABAR LA APP -->
+            <button class="btn-premium" id="btn-verificar" onclick="verificarPagoEnVivo()" style="margin-bottom: 12px; border: 1px solid var(--cyan-accent); color: var(--cyan-accent); background: rgba(14, 165, 233, 0.1); box-shadow: none;">
+                🔄 YA PAGUÉ (VERIFICAR)
+            </button>
+            
             <button class="btn-premium" style="background:transparent; border:1px solid var(--glass-border); color:var(--text-gray); font-size:0.85rem; box-shadow: none;" onclick="location.reload()">Cerrar Sesión</button>
         </div>
     </div>
@@ -1669,6 +1675,53 @@
                 });
             });
         }
+
+        // ========================================================
+        // NUEVA FUNCIÓN: VERIFICACIÓN EN VIVO DE UALÁ
+        // ========================================================
+        async function verificarPagoEnVivo() {
+            if (!cUser) return alert("Error: Usuario no identificado.");
+            const btn = document.getElementById('btn-verificar');
+            const txtOriginal = btn.innerText;
+            btn.innerText = '⏳ VERIFICANDO...';
+            
+            try {
+                const { data, error } = await _supabase
+                    .from('ruta38_usuarios')
+                    .select('created_at, fecha_vencimiento')
+                    .eq('local', cUser)
+                    .single();
+                    
+                if (error) throw error;
+                    
+                if (data) {
+                    let diasRestantes = 0;
+                    let hoy = new Date();
+
+                    if (data.fecha_vencimiento) {
+                        let fechaVence = new Date(data.fecha_vencimiento);
+                        diasRestantes = Math.ceil((fechaVence - hoy) / (1000 * 60 * 60 * 24));
+                    } else if (data.created_at) {
+                        let fechaCreacion = new Date(data.created_at);
+                        let diasPasados = Math.floor((hoy - fechaCreacion) / (1000 * 60 * 60 * 24));
+                        diasRestantes = 30 - diasPasados;
+                    }
+
+                    if (diasRestantes > 0) {
+                        document.getElementById('paywall-modal').style.display = 'none';
+                        updateDaysUI(diasRestantes);
+                        alert("✅ ¡PAGO APROBADO! Tu suscripción fue renovada exitosamente por 30 días. ¡Bienvenido de nuevo!");
+                    } else {
+                        alert("⏳ AÚN NO IMPACTA: Ualá todavía está procesando el pago. Esperá unos segundos y volvé a tocar el botón.");
+                    }
+                }
+            } catch(e) {
+                alert("❌ Error de conexión al verificar el pago en la base de datos.");
+            }
+            
+            btn.innerText = txtOriginal;
+        }
     </script>
 </body>
 </html>
+
