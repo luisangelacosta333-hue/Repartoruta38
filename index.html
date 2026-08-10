@@ -158,6 +158,15 @@
         .footer-tech .company { font-size: 1.3rem; color: #0284c7; font-weight: 900; font-family: 'Outfit', sans-serif; letter-spacing: 2px; margin-bottom: 5px; }
         .footer-tech p { margin: 0 0 4px 0; font-size: 0.85rem; color: #64748b; font-weight: 500; line-height: 1.5; }
         .footer-tech .year { font-size: 0.75rem; color: #94a3b8; margin-top: 12px; font-weight: 600; letter-spacing: 1px; }
+
+        /* ESTILOS PARA EXPANDIR TARJETAS (PANTALLA COMPLETA) */
+        .expandable-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .expanded-card { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; z-index: 9999999 !important; background: #ffffff !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+        .expanded-card #audit-logs-container, .expanded-card #adm-inventory-list { max-height: none !important; flex: 1 1 auto !important; }
+        .card-header-icon { transition: transform 0.3s; font-family: 'Inter', sans-serif; }
+        .expanded-card .card-header-icon { transform: rotate(180deg); color: #e11d48 !important; }
+        .btn-close-expand { display: none; }
+        .expanded-card .btn-close-expand { display: block; margin-top: 15px; width: 100%; padding: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; font-weight: 800; color: #0f172a; cursor: pointer; text-transform: uppercase; font-family: 'Outfit', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -488,10 +497,14 @@
             </div>
         </div>
 
-        <div style="background:#ffffff; padding:15px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
+        <div id="card-ventas" class="expandable-card" style="background:#ffffff; padding:15px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #8b5cf6;"></div>
-            <h3 style="font-size:1.1rem; font-weight:900; margin-bottom:10px; margin-top:0; color:#0f172a; font-family: 'Outfit', sans-serif;">🧾 Libro Mayor (Ventas)</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; cursor:pointer;" onclick="toggleCard('card-ventas')">
+                <h3 style="font-size:1.1rem; font-weight:900; margin:0; color:#0f172a; font-family: 'Outfit', sans-serif;">🧾 Libro Mayor (Ventas)</h3>
+                <span class="card-header-icon" style="font-size: 1.4rem; color: #94a3b8; line-height: 1;">⤢</span>
+            </div>
             <div id="audit-logs-container" class="tx-list light-tx-list" style="max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
+            <button class="btn-close-expand" onclick="toggleCard('card-ventas')">Cerrar Vista Completa</button>
         </div>
 
         <div style="background:#ffffff; padding:15px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
@@ -505,9 +518,12 @@
             <p style="color:#64748b; font-size:0.85rem; padding: 20px 0;">El chofer debe encender el GPS (Botón superior).</p>
         </div>
 
-        <div style="background:#ffffff; padding:25px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03);">
+        <div id="card-inventario" class="expandable-card" style="background:#ffffff; padding:25px; border-radius:20px; margin-bottom:25px; border:1px solid #e2e8f0; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.03); display: flex; flex-direction: column;">
             <div style="position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, #0284c7, #0ea5e9);"></div>
-            <h3 style="margin-bottom:20px; margin-top:0; font-size:1.2rem; font-weight:900; color:#0f172a; font-family: 'Outfit', sans-serif;">📦 Reposición de Inventario</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; cursor:pointer;" onclick="toggleCard('card-inventario')">
+                <h3 style="margin:0; font-size:1.2rem; font-weight:900; color:#0f172a; font-family: 'Outfit', sans-serif;">📦 Reposición de Inventario</h3>
+                <span class="card-header-icon" style="font-size: 1.4rem; color: #94a3b8; line-height: 1;">⤢</span>
+            </div>
             
             <div style="display:flex; align-items:center; margin-bottom:10px;">
                 <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
@@ -525,10 +541,23 @@
             <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; margin-top:10px; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">GUARDAR EN INVENTARIO</button>
             
             <div id="adm-inventory-list" style="margin-top: 20px; max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
+            <button class="btn-close-expand" onclick="toggleCard('card-inventario')">Cerrar Vista Completa</button>
         </div>
     </div>
 
     <script>
+        // FUNCIÓN PARA EXPANDIR Y CERRAR LAS TARJETAS EN PANTALLA COMPLETA
+        function toggleCard(id) {
+            let card = document.getElementById(id);
+            if (card.classList.contains('expanded-card')) {
+                card.classList.remove('expanded-card');
+                document.body.style.overflow = ''; 
+            } else {
+                card.classList.add('expanded-card');
+                document.body.style.overflow = 'hidden'; 
+            }
+        }
+
         const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co'; 
         const supabaseKey = 'sb_publishable_xo7-uUQqtWvEWoLGqqlrsg_rxdroLx4';
         const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
