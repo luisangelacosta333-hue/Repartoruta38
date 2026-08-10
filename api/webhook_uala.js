@@ -53,11 +53,11 @@ export default async function handler(req, res) {
             grant_type: 'client_credentials'
         });
 
-        // URL DE PRODUCCIÓN REAL (Sin 'developers')
-        const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
+        // URL OFICIAL DE PRODUCCIÓN UALÁ BIS V2 (AUTENTICACIÓN)
+        const tk = await hp('api.ualabis.com.ar', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
+            return res.status(401).json({ success: false, msg: 'Error Token Ualá: ' + JSON.stringify(tk) });
         }
 
         const hexLocal = Buffer.from(local).toString('hex');
@@ -72,8 +72,8 @@ export default async function handler(req, res) {
             external_reference: refUnica 
         });
 
-        // URL DE PRODUCCIÓN REAL (Sin 'developers')
-        const pg = await hp('checkout.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+        // URL OFICIAL DE PRODUCCIÓN UALÁ BIS V2 (CHECKOUT / ÓRDENES)
+        const pg = await hp('api.ualabis.com.ar', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
         const link = pg?.links?.checkout_link || pg?.checkout_link;
 
