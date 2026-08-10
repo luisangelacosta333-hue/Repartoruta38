@@ -53,8 +53,8 @@ export default async function handler(req, res) {
             grant_type: 'client_credentials'
         });
 
-        // 1. URL DE PRODUCCIÓN REAL (Sin 'developers')
-        const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
+        // 1. URL DE PRUEBAS (Para que acepte tus credenciales de Vercel)
+        const tk = await hp('auth.developers.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
             return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
@@ -69,13 +69,13 @@ export default async function handler(req, res) {
             description: `Renovacion 30 dias - Local: ${local}`,
             callback_success: "https://www.ruta38envios.com.ar",
             callback_fail: "https://www.ruta38envios.com.ar",
-            // 2. RUTA AL WEBHOOK CORREGIDA (asumiendo que el archivo se llama webhook.js)
-            notification_url: "https://www.ruta38envios.com.ar/api/webhook", 
+            // 2. RUTA AL WEBHOOK CORREGIDA (apunta exactamente a webhook_uala)
+            notification_url: "https://www.ruta38envios.com.ar/api/webhook_uala", 
             external_reference: refUnica 
         });
 
-        // 3. URL DE PRODUCCIÓN REAL (Sin 'developers')
-        const pg = await hp('checkout.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
+        // 3. URL DE PRUEBAS
+        const pg = await hp('checkout.developers.ar.ua.la', '/v2/api/checkout', payloadCheckout, `Bearer ${tk.access_token}`);
 
         const link = pg?.links?.checkout_link || pg?.checkout_link;
 
