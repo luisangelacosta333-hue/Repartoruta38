@@ -1366,6 +1366,7 @@
                 if(d.success) { 
                     alert("✅ " + d.msg); 
                     document.getElementById('paywall-modal').style.display = 'none'; 
+                    updateDaysUI(30);
                     go('view-chofer'); 
                 } else { 
                     alert("❌ " + d.msg); 
