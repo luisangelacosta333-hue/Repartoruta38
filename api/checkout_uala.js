@@ -57,7 +57,8 @@ export default async function handler(req, res) {
         const tk = await hp('auth.ar.ua.la', '/v2/api/auth/token', payloadToken);
 
         if (!tk || !tk.access_token) {
-            return res.status(401).json({ success: false, msg: 'Error Token Ualá' });
+            // ACÁ ESTÁ LA TRAMPA PARA CAZAR EL ERROR REAL DE UALÁ
+            return res.status(401).json({ success: false, msg: 'Error Token Ualá: ' + JSON.stringify(tk) });
         }
 
         const hexLocal = Buffer.from(local).toString('hex');
@@ -88,3 +89,4 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, msg: error.message });
     }
 }
+
