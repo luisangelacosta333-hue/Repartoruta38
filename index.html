@@ -978,6 +978,23 @@
             saveLocalClients(dbState.clients);
         };
 
+        // 🔥 FUNCIÓN MÁGICA: ENVÍO DE WHATSAPP AUTOMÁTICO EN FIADOS
+        function enviarReciboWhatsAppAuto(cName, amount, action, cWa) {
+            if (!cWa || cWa === 'Sin número' || cWa === 'null' || cWa === 'undefined') return;
+            let numLimpio = String(cWa).replace(/\D/g, '');
+            if (numLimpio.length === 10) numLimpio = '549' + numLimpio;
+            if (numLimpio.length < 10) return;
+            
+            let client = dbState.clients.find(c => c.name.toLowerCase() === cName.toLowerCase());
+            let currentDebt = client ? Math.abs(parseFloat(client.debt) || 0) : 0;
+            
+            let msg = action === 'FIAR' 
+                ? `Hola ${cName}, se agregó a tu cuenta $${amount.toLocaleString('es-AR')} en ${cUser}. Tu saldo a pagar es de $${currentDebt.toLocaleString('es-AR')}. ¡Gracias!` 
+                : `Hola ${cName}, registramos tu pago de $${amount.toLocaleString('es-AR')} en ${cUser}. Tu saldo restante es de $${currentDebt.toLocaleString('es-AR')}. ¡Gracias!`;
+            
+            window.open(`https://wa.me/${numLimpio}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
         function submitSale(method) {
             let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText);
             if(val <= 0) return alert("Ingresá un monto mayor a 0");
@@ -1362,12 +1379,12 @@
                 img.src = ev.target.result; 
                 img.onload = async () => { 
                     const c = document.createElement('canvas'); 
-                    let targetWidth = 320; 
+                    let targetWidth = 800; // 🔥 CORREGIDO PARA LA IA
                     let scale = targetWidth / img.width; 
                     c.width = targetWidth; 
                     c.height = img.height * scale; 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    let base64 = c.toDataURL('image/jpeg', 0.20); 
+                    let base64 = c.toDataURL('image/jpeg', 0.80); // 🔥 CORREGIDO PARA LA IA
                     
                     if (isPaywallUpload) { 
                         ejecutarValidacionPaywallIA(base64); 
@@ -1433,6 +1450,7 @@
                 let newLog = { type: 'COBRO', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${payload.clientName} (TRANSFERENCIA)`, foto_base64: base64str };
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
                 updateClientDebtLocal(payload.clientName, -val, payload.clientPhone);
+                enviarReciboWhatsAppAuto(payload.clientName, val, 'COBRO', payload.clientPhone); // 🔥 AGREGADO
                 renderAllData();
             } else { 
                 payload.type = 'SALE'; 
@@ -1473,6 +1491,7 @@
                 let newLog = { type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: descFiado };
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
                 updateClientDebtLocal(cName, tempFiadoAmount, cWa);
+                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'FIAR', cWa); // 🔥 AGREGADO
 
                 if (selProd && codeStr !== 'VARIOS') {
                     let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
@@ -1491,6 +1510,8 @@
                 let newLog = { type: 'COBRO', method: 'EFECTIVO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${cName} (EFECTIVO)` };
                 saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
                 updateClientDebtLocal(cName, -tempFiadoAmount, cWa);
+                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'COBRO', cWa); // 🔥 AGREGADO
+                
                 renderAllData();
                 document.getElementById('fiado-modal').style.display='none'; 
                 showToast("Cobro guardado"); clearCalc(); 
