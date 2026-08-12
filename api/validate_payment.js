@@ -49,12 +49,24 @@ export default async function handler(req, res) {
 
         if (!iaDecision.aprobado) return res.status(200).json({ success: false, msg: "Ticket Rechazado: " + iaDecision.motivo });
 
-        // RENOVACIÓN EN TABLA RUTA38_USUARIOS
+        // CALCULAMOS LOS 30 DÍAS EXACTOS DESDE HOY
+        const nuevaFecha = new Date();
+        nuevaFecha.setDate(nuevaFecha.getDate() + 30);
+
+        // RENOVACIÓN EN TABLA RUTA38_USUARIOS USANDO LA LLAVE MAESTRA
         const supabaseUrl = 'https://drpjcmznauposqlhaveo.supabase.co';
         const updateRes = await fetch(`${supabaseUrl}/rest/v1/ruta38_usuarios?local=eq.${encodeURIComponent(local)}`, {
             method: 'PATCH',
-            headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ created_at: new Date().toISOString() })
+            headers: { 
+                'apikey': supabaseKey, 
+                'Authorization': `Bearer ${supabaseKey}`, 
+                'Content-Type': 'application/json', 
+                'Prefer': 'return=minimal' 
+            },
+            body: JSON.stringify({ 
+                created_at: new Date().toISOString(),
+                fecha_vencimiento: nuevaFecha.toISOString() 
+            })
         });
 
         if (!updateRes.ok) throw new Error("Error en BD.");
@@ -62,3 +74,4 @@ export default async function handler(req, res) {
 
     } catch (error) { return res.status(500).json({ success: false, msg: error.message }); }
 }
+
