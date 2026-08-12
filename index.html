@@ -1232,12 +1232,12 @@
                 img.src = ev.target.result; 
                 img.onload = async () => { 
                     const c = document.createElement('canvas'); 
-                    let targetWidth = 500; // MAGIA QUIRÚRGICA: Reducido para agilizar descargas sin romper a la IA
+                    let targetWidth = 500; 
                     let scale = targetWidth / img.width; 
                     c.width = targetWidth; 
                     c.height = img.height * scale; 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    let base64 = c.toDataURL('image/jpeg', 0.65); // MAGIA QUIRÚRGICA: Calidad ajustada
+                    let base64 = c.toDataURL('image/jpeg', 0.65); 
                     
                     if (isPaywallUpload) { 
                         ejecutarValidacionPaywallIA(base64); 
@@ -1441,23 +1441,32 @@
                 doc.text(`Generado: ${hoy} ${getTucumanTimeFE()}`, 14, 28); 
                 
                 let datosTurno = []; 
-                for(let i=0; i<dbState.logs.length; i++) { 
+                let startIndex = 0;
+                
+                if (dbState.logs.length > 0 && String(dbState.logs[0].descripcion || "").toLowerCase().includes('cierre de turno')) {
+                    startIndex = 1; 
+                }
+                
+                for(let i=startIndex; i<dbState.logs.length; i++) { 
                     let tx = dbState.logs[i]; 
                     let descStr = tx.descripcion ? String(tx.descripcion) : ""; 
-                    if(descStr.toLowerCase().includes('cierre de turno')) { if (i !== 0) break; } 
+                    if(descStr.toLowerCase().includes('cierre de turno')) { break; } 
                     datosTurno.push(tx); 
                 } 
-                if(datosTurno.length === 0) return alert("No hay transacciones en el turno actual."); 
+                if(datosTurno.length === 0) return alert("No hay transacciones para mostrar en este turno."); 
                 
                 let htmlFilas = []; 
                 for(let i=0; i<datosTurno.length; i++) { 
                     let tx = datosTurno[i]; 
                     let descStr = tx.descripcion ? String(tx.descripcion) : ""; 
-                    htmlFilas.push([ `${tx.hora}`, tx.tipo.toUpperCase(), tx.metodo.toUpperCase(), descStr, `$${Math.abs(tx.monto).toLocaleString('es-AR')}` ]); 
+                    let tipoStr = tx.tipo ? String(tx.tipo).toUpperCase() : 'S/D';
+                    let metStr = tx.metodo ? String(tx.metodo).toUpperCase() : 'S/D';
+                    htmlFilas.push([ `${tx.hora || ''}`, tipoStr, metStr, descStr, `$${Math.abs(parseFloat(tx.monto) || 0).toLocaleString('es-AR')}` ]); 
                 } 
                 
                 doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); 
-                let ms = new Date().getTime(); doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}_${ms}.pdf`); 
+                let ms = new Date().getTime(); 
+                doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}_${ms}.pdf`); 
             } catch(e) { alert("Error al generar PDF: " + e.message); } 
         }
         
@@ -1472,7 +1481,6 @@
                 descargarPDFDay(); 
             } 
             
-            // Agregar log de cierre al sistema de supabase
             let logCierre = { local_id: currentLocalId, tipo: 'SISTEMA', metodo: 'SISTEMA', monto: 0, fecha: getTucumanDateFE(), hora: getTucumanTimeFE(), descripcion: 'CIERRE DE TURNO REALIZADO' };
             await _supabase.from('ruta38_logs').insert([logCierre]);
             
@@ -1482,10 +1490,10 @@
             await loadDataFromDB();
             document.getElementById('calc-total').innerText = "0"; 
 
-            // MAGIA QUIRÚRGICA: Retraso el salto a WhatsApp 1.5 segundos para darle tiempo al celular a procesar y guardar el PDF
+            showToast("Generando reporte y abriendo WhatsApp...");
             setTimeout(() => {
                 window.location.href = waUrl; 
-            }, 1500);
+            }, 3000);
         }
         
         function leerCaracteristicasApp() { 
