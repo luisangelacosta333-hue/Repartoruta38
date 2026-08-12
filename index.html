@@ -1511,20 +1511,10 @@
                 let ms = new Date().getTime(); 
                 let nombreArchivo = `Reporte_Turno_${cUser.replace(/\s+/g,'_')}_${hoy.replace(/\//g,'-')}_${ms}.pdf`;
                 
-                let pdfBlob = doc.output('blob');
-                let blobUrl = URL.createObjectURL(pdfBlob);
+                doc.save(nombreArchivo);
                 
-                let a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = nombreArchivo;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                showToast("✅ PDF descargado exitosamente");
                 
-                showToast("✅ PDF listo para abrir");
-                
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 8000);
             } catch(e) { alert("Error al generar PDF: " + e.message); } 
         }
         
