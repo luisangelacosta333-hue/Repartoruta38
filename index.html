@@ -954,6 +954,10 @@
             } else {
                 alert("Ese cliente ya existe. Si no lo ves en la lista principal porque su deuda es $0, usá el buscador (la lupa) para encontrarlo.");
             }
+            
+            // 🟢 SOLUCIÓN: AUTOFILTRAR AL NUEVO CLIENTE PARA QUE NO SE OCULTE
+            document.getElementById('search-client').value = name;
+            
             document.getElementById('new-client-name').value = '';
             document.getElementById('new-client-wa').value = '';
             renderFiadoClients();
