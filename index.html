@@ -1479,10 +1479,13 @@
             let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
             let waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
             
-            window.location.href = waUrl; 
-            
             await loadDataFromDB();
             document.getElementById('calc-total').innerText = "0"; 
+
+            // MAGIA QUIRÚRGICA: Retraso el salto a WhatsApp 1.5 segundos para darle tiempo al celular a procesar y guardar el PDF
+            setTimeout(() => {
+                window.location.href = waUrl; 
+            }, 1500);
         }
         
         function leerCaracteristicasApp() { 
