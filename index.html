@@ -1047,7 +1047,7 @@
 
             let adminLogsArray = [], choferLogsArray = [];
             let calcCash = 0, calcTransf = 0;
-            let turnoCerrado = false; // MAGIA QUIRURGICA: Para frenar el contador
+            let turnoCerrado = false; 
 
             for (let i = 0; i < dbState.logs.length; i++) {
                 let l = dbState.logs[i];
@@ -1059,7 +1059,7 @@
                 let descStr = l.descripcion ? String(l.descripcion) : (typeDisplay === 'VENTA' ? 'Venta registrada' : "Registro Vacío");
 
                 if (descStr.toLowerCase().includes('cierre de turno')) {
-                    turnoCerrado = true; // Corta la carga en el próximo ciclo
+                    turnoCerrado = true; 
                 }
 
                 if (typeDisplay !== 'SISTEMA' && !descStr.toLowerCase().includes('cierre de turno')) {
@@ -1457,7 +1457,7 @@
                 } 
                 
                 doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); 
-                doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}.pdf`); 
+                let ms = new Date().getTime(); doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}_${ms}.pdf`); 
             } catch(e) { alert("Error al generar PDF: " + e.message); } 
         }
         
