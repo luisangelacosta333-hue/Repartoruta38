@@ -163,7 +163,6 @@
         .expanded-card { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; z-index: 9999999 !important; background: #ffffff !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
         .expanded-card #audit-logs-container, .expanded-card #adm-inventory-list { max-height: none !important; flex: 1 1 auto !important; }
         
-        /* MAGIA QUIRÚRGICA: Oculta el formulario de inventario al expandir para que los productos ocupen el 100% de la pantalla */
         .expanded-card #inventario-form-wrapper { display: none !important; }
         
         .card-header-icon { transition: transform 0.3s; font-family: 'Inter', sans-serif; }
@@ -859,10 +858,10 @@
             let newDebt = Math.max(0, currentDebt + amount);
 
             if (client) {
-                client.deuda = newDebt; // Actualización optimista para que WhatsApp lea el saldo correcto
+                client.deuda = newDebt; 
                 await _supabase.from('ruta38_clientes').update({ deuda: newDebt }).eq('local_id', currentLocalId).eq('nombre', client.nombre);
             } else {
-                dbState.clients.push({ local_id: currentLocalId, nombre: nombre, whatsapp: wa, deuda: newDebt }); // Actualización optimista
+                dbState.clients.push({ local_id: currentLocalId, nombre: nombre, whatsapp: wa, deuda: newDebt }); 
                 await _supabase.from('ruta38_clientes').insert([{ local_id: currentLocalId, nombre: nombre, whatsapp: wa, deuda: newDebt }]);
             }
         }
@@ -1048,53 +1047,61 @@
 
             let adminLogsArray = [], choferLogsArray = [];
             let calcCash = 0, calcTransf = 0;
+            let turnoCerrado = false; // MAGIA QUIRURGICA: Para frenar el contador
 
-            dbState.logs.forEach(l => {
+            for (let i = 0; i < dbState.logs.length; i++) {
+                let l = dbState.logs[i];
+                if (turnoCerrado) continue;
+
                 let pAmt = parseFloat(l.monto) || 0;
                 let typeDisplay = l.tipo ? l.tipo.toUpperCase() : 'VENTA';
                 let methodStr = (l.metodo || '').toUpperCase();
-                
-                if (typeDisplay !== 'SISTEMA' && (!l.descripcion || !String(l.descripcion).toLowerCase().includes('cierre'))) {
+                let descStr = l.descripcion ? String(l.descripcion) : (typeDisplay === 'VENTA' ? 'Venta registrada' : "Registro Vacío");
+
+                if (descStr.toLowerCase().includes('cierre de turno')) {
+                    turnoCerrado = true; // Corta la carga en el próximo ciclo
+                }
+
+                if (typeDisplay !== 'SISTEMA' && !descStr.toLowerCase().includes('cierre de turno')) {
                     if (methodStr === 'EFECTIVO' || methodStr === 'DEBITO') {
-                        calcCash += pAmt; 
+                        calcCash += pAmt;
                     } else if (methodStr === 'TRANSFERENCIA') {
                         calcTransf += pAmt;
                     }
                 }
-                
-                let amtColor = '#10b981'; 
+
+                let amtColor = '#10b981';
                 if (typeDisplay === 'COBRO' || methodStr === 'EFECTIVO' || methodStr === 'TRANSFERENCIA') {
-                    if (typeDisplay !== 'SALIDA') amtColor = '#10b981'; 
+                    if (typeDisplay !== 'SALIDA') amtColor = '#10b981';
                 }
-                if (methodStr === 'FIADO') amtColor = '#0ea5e9'; 
-                if (typeDisplay === 'SALIDA') amtColor = '#e11d48'; 
-                
-                if(typeDisplay === 'SISTEMA' || (l.descripcion && String(l.descripcion).toLowerCase().includes('cierre'))) {
-                    amtColor = '#64748b'; 
+                if (methodStr === 'FIADO') amtColor = '#0ea5e9';
+                if (typeDisplay === 'SALIDA') amtColor = '#e11d48';
+
+                if(typeDisplay === 'SISTEMA' || descStr.toLowerCase().includes('cierre de turno')) {
+                    amtColor = '#64748b';
                 }
-                
+
                 let icon = methodStr === 'EFECTIVO' ? '💵' : methodStr === 'TRANSFERENCIA' ? '🏦' : methodStr === 'FIADO' ? '📝' : typeDisplay === 'SISTEMA' ? '💰' : '💸';
-                let descColor = '#1e293b'; 
-                let descStr = l.descripcion ? String(l.descripcion) : (typeDisplay === 'VENTA' ? 'Venta registrada' : "Registro Vacío"); 
-                
+                let descColor = '#1e293b';
+
                 let amt = pAmt === 0 ? '-' : `$${Math.abs(pAmt).toLocaleString('es-AR')}`; let receiptBtn = '';
                 if(l.recibo_url && l.recibo_url.length > 10) { receiptBtn = `<div style="margin-top:10px;"><button onclick="openReceipt('${l.recibo_url}')" style="background:#f1f5f9; border: 1px solid #cbd5e1; color:#0f172a; padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.75rem; cursor:pointer;">📸 VER TICKET</button></div>`; }
                 let methodDisplay = methodStr === 'TRANSFERENCIA' ? 'TRANSF.' : methodStr;
-                
-                let row = `<div class="log-row"><div class="log-left">${icon}</div><div class="log-info"><div class="log-type" style="color:#64748b;">${typeDisplay}</div><div class="log-date" style="color:#94a3b8;">${l.fecha || ''} ${l.hora || ''}</div><div class="log-desc" style="color:${descColor}; font-weight:800;">${descStr}${receiptBtn}</div></div><div class="log-right"><div class="log-amt" style="color:${amtColor};">${amt}</div><div class="log-method" style="color:#94a3b8;">${methodDisplay}</div></div></div>`;
-                
-                adminLogsArray.push(row); 
-                if(typeDisplay !== 'SISTEMA') { choferLogsArray.push(row); }
-            });
 
-            if(document.getElementById('adm-cash')) document.getElementById('adm-cash').innerText = `$${calcCash.toLocaleString('es-AR')}`; 
+                let row = `<div class="log-row"><div class="log-left">${icon}</div><div class="log-info"><div class="log-type" style="color:#64748b;">${typeDisplay}</div><div class="log-date" style="color:#94a3b8;">${l.fecha || ''} ${l.hora || ''}</div><div class="log-desc" style="color:${descColor}; font-weight:800;">${descStr}${receiptBtn}</div></div><div class="log-right"><div class="log-amt" style="color:${amtColor};">${amt}</div><div class="log-method" style="color:#94a3b8;">${methodDisplay}</div></div></div>`;
+
+                adminLogsArray.push(row);
+                if(typeDisplay !== 'SISTEMA') { choferLogsArray.push(row); }
+            }
+
+            if(document.getElementById('adm-cash')) document.getElementById('adm-cash').innerText = `$${calcCash.toLocaleString('es-AR')}`;
             if(document.getElementById('adm-transf')) document.getElementById('adm-transf').innerText = `$${calcTransf.toLocaleString('es-AR')}`;
-            
+
             let admLogs = document.getElementById('audit-logs-container');
-            if(admLogs) admLogs.innerHTML = adminLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600;">Sin movimientos.</div>';
-            
+            if(admLogs) admLogs.innerHTML = adminLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600;">Sin movimientos en este turno.</div>';
+
             let chfLogs = document.getElementById('chofer-logs-modal-container');
-            if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
+            if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Sin movimientos en este turno.</div>';
 
             let admGps = document.getElementById('adm-gps');
             if (admGps) {
@@ -1225,12 +1232,12 @@
                 img.src = ev.target.result; 
                 img.onload = async () => { 
                     const c = document.createElement('canvas'); 
-                    let targetWidth = 800; 
+                    let targetWidth = 500; // MAGIA QUIRÚRGICA: Reducido para agilizar descargas sin romper a la IA
                     let scale = targetWidth / img.width; 
                     c.width = targetWidth; 
                     c.height = img.height * scale; 
                     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    let base64 = c.toDataURL('image/jpeg', 0.80); 
+                    let base64 = c.toDataURL('image/jpeg', 0.65); // MAGIA QUIRÚRGICA: Calidad ajustada
                     
                     if (isPaywallUpload) { 
                         ejecutarValidacionPaywallIA(base64); 
