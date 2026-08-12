@@ -263,27 +263,49 @@
         </div>
     </div>
 
+    <!-- AQUÍ EMPIEZA LA LIBRETA PREMIUM CORREGIDA -->
     <div class="modal" id="fiado-modal" style="background:#f8fafc; align-items:flex-start;">
-        <div style="width: 100vw; height: 100vh; max-width: 100%; border-radius: 0; background: #fdfdfd; overflow: hidden; display: flex; flex-direction: column;">
-            <div style="background: #ffffff; padding: 15px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02); flex-shrink: 0;">
+        <div style="width: 100vw; height: 100vh; height: 100dvh; max-width: 100%; border-radius: 0; background: #f8fafc; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="background: #ffffff; padding: 18px 20px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); flex-shrink: 0;">
                 <div style="width:24px;"></div>
-                <h2 style="margin:0; color:#0369a1; font-family:'Outfit',sans-serif; font-size: 1.4rem;" id="fiado-monto-text">💰 MONTO: $0</h2>
-                <button style="background:transparent; border:none; font-size:1.5rem; color:#64748b; cursor:pointer;" onclick="document.getElementById('fiado-modal').style.display='none'">×</button>
+                <h2 style="margin:0; color:#0369a1; font-family:'Outfit',sans-serif; font-size: 1.6rem; letter-spacing: -0.5px;" id="fiado-monto-text">💰 MONTO: $0</h2>
+                <button style="background:transparent; border:none; font-size:2rem; color:#94a3b8; cursor:pointer; line-height:1;" onclick="document.getElementById('fiado-modal').style.display='none'">×</button>
             </div>
-            <div style="padding: 15px; flex: 1; overflow-y: auto;">
-                <div style="background:#ffffff; border-radius:16px; padding:20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom:20px; border:1px solid #e2e8f0;">
-                    <h4 style="margin:0 0 15px 0; color:#0f172a; font-family:'Outfit',sans-serif; font-size:1.1rem;">➕ Nuevo Cliente</h4>
-                    <input type="text" id="new-client-name" class="input-light-admin" placeholder="Nombre completo" style="margin-bottom:10px;">
-                    <input type="tel" id="new-client-wa" class="input-light-admin" placeholder="WhatsApp" style="margin-bottom:15px;">
-                    <button class="btn-gradient" style="background: #0ea5e9; padding:14px; font-size:0.95rem; border-radius: 12px;" onclick="crearNuevoCliente()">GUARDAR</button>
+            
+            <div style="padding: 15px 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+                
+                <!-- INSTRUCCIÓN PREMIUM -->
+                <div style="background: linear-gradient(135deg, #e0f2fe, #f0f9ff); border-left: 4px solid #0ea5e9; padding: 16px; border-radius: 12px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.1); flex-shrink: 0;">
+                    <p style="margin: 0; color: #0369a1; font-size: 0.9rem; line-height: 1.5; font-weight: 600;">
+                        <span style="font-size: 1.1rem; margin-right: 5px;">💡</span>
+                        <strong>¿Cómo funciona?</strong> El monto de arriba es el que ingresaste en la calculadora. Elegí un cliente abajo y tocá <strong>SUMAR DEUDA</strong> para fiarle, o elegí <strong>EFECTIVO / TRANSF</strong> si viene a pagar.
+                    </p>
                 </div>
-                <div style="margin-bottom: 15px;">
-                    <input type="text" id="search-client" class="input-light-admin" placeholder="🔍 Buscar cliente..." style="padding: 14px; font-size: 1rem; border-radius: 12px; border: 1px solid #cbd5e1; background: #ffffff;" onkeyup="renderFiadoClients()">
+
+                <!-- NUEVO CLIENTE -->
+                <div style="background:#ffffff; border-radius:20px; padding:22px; box-shadow: 0 8px 25px rgba(0,0,0,0.04); border:1px solid #e2e8f0; flex-shrink: 0;">
+                    <h4 style="margin:0 0 18px 0; color:#0f172a; font-family:'Outfit',sans-serif; font-size:1.2rem; display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #f1f5f9; padding: 8px; border-radius: 10px; font-size: 1rem;">➕</span> Nuevo Cliente
+                    </h4>
+                    <input type="text" id="new-client-name" class="input-light-admin" placeholder="👤 Nombre completo del cliente" style="margin-bottom:12px; padding: 16px; font-size: 1rem; border-radius: 14px; background: #f8fafc;">
+                    <input type="tel" id="new-client-wa" class="input-light-admin" placeholder="📱 WhatsApp (Opcional)" style="margin-bottom:18px; padding: 16px; font-size: 1rem; border-radius: 14px; background: #f8fafc;">
+                    <button class="btn-gradient" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding:16px; font-size:1rem; border-radius: 14px; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);" onclick="crearNuevoCliente()">GUARDAR CLIENTE</button>
                 </div>
-                <div id="fiado-clients-list" style="display:flex; flex-direction:column; gap:12px; padding-bottom:10px; max-height: 55vh; overflow-y: auto;"></div>
+                
+                <!-- BUSCADOR -->
+                <div style="flex-shrink: 0;">
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #94a3b8;">🔍</span>
+                        <input type="text" id="search-client" class="input-light-admin" placeholder="Buscar cliente..." style="padding: 16px 16px 16px 45px; font-size: 1.05rem; border-radius: 14px; border: 1px solid #cbd5e1; background: #ffffff; margin-bottom: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.02);" onkeyup="renderFiadoClients()">
+                    </div>
+                </div>
+                
+                <!-- LISTA DE CLIENTES -->
+                <div id="fiado-clients-list" style="display:flex; flex-direction:column; gap:16px; padding-bottom:30px; flex: 1;"></div>
             </div>
         </div>
     </div>
+    <!-- FIN LIBRETA PREMIUM -->
 
     <div class="modal" id="ventas-modal">
         <div class="modal-content" style="border-top: 5px solid #10b981; background: #ffffff; border: 1px solid #e2e8f0; height: 85vh; display:flex; flex-direction:column; padding: 20px 15px;">
@@ -935,7 +957,7 @@
                 await loadDataFromDB();
                 showToast("Cliente agregado a la libreta");
             } else {
-                alert("Ese cliente ya existe en la lista.");
+                alert("Ese cliente ya existe. Si no lo ves en la lista principal porque su deuda es $0, usá el buscador (la lupa) para encontrarlo.");
             }
             document.getElementById('new-client-name').value = '';
             document.getElementById('new-client-wa').value = '';
@@ -946,7 +968,7 @@
             let listContainer = document.getElementById('fiado-clients-list');
             if(!listContainer) return;
             
-            let searchTerm = document.getElementById('search-client').value.toLowerCase();
+            let searchTerm = document.getElementById('search-client').value.toLowerCase().trim();
             let html = '';
             let cliList = [...dbState.clients];
             
@@ -957,38 +979,55 @@
                 return a.nombre.localeCompare(b.nombre);
             });
 
+            let clientesMostrados = 0;
+
             cliList.forEach(c => {
+                let pDebt = Math.abs(parseFloat(c.deuda) || 0);
+                
+                // REGLA: Si la deuda es 0, lo ocultamos. Solo aparece si lo están buscando con la lupa.
+                if (pDebt === 0 && !searchTerm) return;
+                
                 if(searchTerm && !c.nombre.toLowerCase().includes(searchTerm)) return;
                 
-                let pDebt = Math.abs(parseFloat(c.deuda) || 0);
+                clientesMostrados++;
                 let waText = (c.whatsapp && String(c.whatsapp).trim().length > 5) ? c.whatsapp : 'Sin número';
                 
                 html += `
-                <div style="background:#ffffff; border-radius:16px; padding:15px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div style="background:#ffffff; border-radius:20px; padding:20px; border:1px solid #e2e8f0; box-shadow:0 8px 20px rgba(0,0,0,0.03);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
                         <div>
-                            <div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif; text-transform:uppercase;">${c.nombre}</div>
-                            <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">📱 ${waText}</div>
+                            <div style="font-weight:900; color:#0f172a; font-size:1.25rem; font-family:'Outfit',sans-serif; text-transform:uppercase; letter-spacing: -0.5px;">${c.nombre}</div>
+                            <div style="font-size:0.85rem; color:#64748b; margin-top:6px; font-weight: 500;">📱 ${waText}</div>
                         </div>
-                        <div style="font-weight:900; font-size:1.4rem; color:#0369a1; font-family:'Outfit',sans-serif;">$${pDebt.toLocaleString('es-AR')}</div>
+                        <div style="font-weight:900; font-size:1.6rem; color:#0369a1; font-family:'Outfit',sans-serif; line-height: 1;">$${pDebt.toLocaleString('es-AR')}</div>
                     </div>
                     
-                    <div style="background:#fef2f2; border: 1px dashed #f87171; border-radius:12px; padding:10px; margin-bottom:8px;">
-                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #b91c1c; text-transform: uppercase; text-align:center;">¿Va a fiar?</p>
-                        <button style="width:100%; background:#ef4444; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.95rem; box-shadow:0 4px 10px rgba(239,68,68,0.3); cursor:pointer;" onclick="submitFiado('FIAR', '${c.nombre}', '${c.whatsapp}')">🔴 SUMAR DEUDA</button>
-                    </div>
+                    <div style="display:flex; flex-direction: column; gap: 10px;">
+                        <div style="background:#fef2f2; border: 1px solid #fecaca; border-radius:14px; padding:12px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 0.8rem; font-weight: 800; color: #dc2626; text-transform: uppercase; display: flex; align-items: center; gap: 6px;"><span style="font-size: 1rem;">📈</span> ¿Aumentar deuda? (FIAR)</div>
+                            <button style="width:100%; background:#ef4444; color:white; border:none; border-radius:10px; padding:14px; font-weight:900; font-size:1rem; box-shadow:0 6px 15px rgba(239,68,68,0.25); cursor:pointer; transition: 0.2s;" onclick="submitFiado('FIAR', '${c.nombre}', '${c.whatsapp}')">SUMAR DEUDA</button>
+                        </div>
 
-                    <div style="background:#ecfdf5; border: 1px dashed #34d399; border-radius:12px; padding:10px;">
-                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #047857; text-transform: uppercase; text-align:center;">¿Viene a pagar?</p>
-                        <div style="display:flex; gap:8px;">
-                            <button style="flex:1; background:#10b981; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(16,185,129,0.3); cursor:pointer;" onclick="submitFiado('COBRO_EFECTIVO', '${c.nombre}', '${c.whatsapp}')">💵 EFECTIVO</button>
-                            <button style="flex:1; background:#0ea5e9; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(14,165,233,0.3); cursor:pointer;" onclick="submitFiado('COBRO_TRANSF', '${c.nombre}', '${c.whatsapp}')">🏦 TRANSF</button>
+                        <div style="background:#ecfdf5; border: 1px solid #a7f3d0; border-radius:14px; padding:12px; display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 0.8rem; font-weight: 800; color: #059669; text-transform: uppercase; display: flex; align-items: center; gap: 6px;"><span style="font-size: 1rem;">📉</span> ¿Vino a pagar? (COBRAR)</div>
+                            <div style="display:flex; gap:10px;">
+                                <button style="flex:1; background:#10b981; color:white; border:none; border-radius:10px; padding:14px; font-weight:900; font-size:0.95rem; box-shadow:0 6px 15px rgba(16,185,129,0.25); cursor:pointer; transition: 0.2s;" onclick="submitFiado('COBRO_EFECTIVO', '${c.nombre}', '${c.whatsapp}')">EFECTIVO</button>
+                                <button style="flex:1; background:#0ea5e9; color:white; border:none; border-radius:10px; padding:14px; font-weight:900; font-size:0.95rem; box-shadow:0 6px 15px rgba(14,165,233,0.25); cursor:pointer; transition: 0.2s;" onclick="submitFiado('COBRO_TRANSF', '${c.nombre}', '${c.whatsapp}')">TRANSF.</button>
+                            </div>
                         </div>
                     </div>
                 </div>`;
             });
             
-            listContainer.innerHTML = html || '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No hay clientes en la lista. Creá uno arriba.</div>';
+            if (clientesMostrados === 0) {
+                if (searchTerm) {
+                    html = '<div style="text-align:center; color:#64748b; padding:30px 20px; font-weight:600; font-size: 1.1rem; background: #ffffff; border-radius: 16px; border: 1px dashed #cbd5e1;">No se encontraron clientes con ese nombre.</div>';
+                } else {
+                    html = '<div style="text-align:center; color:#64748b; padding:30px 20px; font-weight:600; font-size: 1.1rem; background: #ffffff; border-radius: 16px; border: 1px dashed #cbd5e1;">No hay clientes con deuda activa. Buscá por nombre para ver a todos.</div>';
+                }
+            }
+
+            listContainer.innerHTML = html;
         }
 
         function renderAllData() {
