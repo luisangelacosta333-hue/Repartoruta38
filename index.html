@@ -1300,6 +1300,8 @@
                     alert("✅ " + d.msg); 
                     document.getElementById('paywall-modal').style.display = 'none'; 
                     updateDaysUI(30);
+                    await loadDataFromDB();
+                    setupRealtime();
                     go('view-chofer'); 
                 } else { 
                     alert("❌ " + d.msg); 
