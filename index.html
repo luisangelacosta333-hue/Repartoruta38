@@ -263,7 +263,7 @@
         </div>
     </div>
 
-    <!-- AQUÍ EMPIEZA LA LIBRETA PREMIUM CORREGIDA -->
+    <!-- LIBRETA PREMIUM -->
     <div class="modal" id="fiado-modal" style="background:#f8fafc; align-items:flex-start;">
         <div style="width: 100vw; height: 100vh; height: 100dvh; max-width: 100%; border-radius: 0; background: #f8fafc; overflow: hidden; display: flex; flex-direction: column;">
             <div style="background: #ffffff; padding: 18px 20px; text-align: center; border-bottom: 1px solid #e2e8f0; z-index: 10; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); flex-shrink: 0;">
@@ -274,7 +274,6 @@
             
             <div style="padding: 15px 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
                 
-                <!-- INSTRUCCIÓN PREMIUM -->
                 <div style="background: linear-gradient(135deg, #e0f2fe, #f0f9ff); border-left: 4px solid #0ea5e9; padding: 16px; border-radius: 12px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.1); flex-shrink: 0;">
                     <p style="margin: 0; color: #0369a1; font-size: 0.9rem; line-height: 1.5; font-weight: 600;">
                         <span style="font-size: 1.1rem; margin-right: 5px;">💡</span>
@@ -282,7 +281,6 @@
                     </p>
                 </div>
 
-                <!-- NUEVO CLIENTE -->
                 <div style="background:#ffffff; border-radius:20px; padding:22px; box-shadow: 0 8px 25px rgba(0,0,0,0.04); border:1px solid #e2e8f0; flex-shrink: 0;">
                     <h4 style="margin:0 0 18px 0; color:#0f172a; font-family:'Outfit',sans-serif; font-size:1.2rem; display: flex; align-items: center; gap: 8px;">
                         <span style="background: #f1f5f9; padding: 8px; border-radius: 10px; font-size: 1rem;">➕</span> Nuevo Cliente
@@ -292,7 +290,6 @@
                     <button class="btn-gradient" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding:16px; font-size:1rem; border-radius: 14px; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);" onclick="crearNuevoCliente()">GUARDAR CLIENTE</button>
                 </div>
                 
-                <!-- BUSCADOR -->
                 <div style="flex-shrink: 0;">
                     <div style="position: relative;">
                         <span style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #94a3b8;">🔍</span>
@@ -300,12 +297,10 @@
                     </div>
                 </div>
                 
-                <!-- LISTA DE CLIENTES -->
                 <div id="fiado-clients-list" style="display:flex; flex-direction:column; gap:16px; padding-bottom:30px; flex: 1;"></div>
             </div>
         </div>
     </div>
-    <!-- FIN LIBRETA PREMIUM -->
 
     <div class="modal" id="ventas-modal">
         <div class="modal-content" style="border-top: 5px solid #10b981; background: #ffffff; border: 1px solid #e2e8f0; height: 85vh; display:flex; flex-direction:column; padding: 20px 15px;">
@@ -1471,6 +1466,9 @@
         function descargarPDFDay() { 
             try { 
                 if(!window.jspdf || !window.jspdf.jsPDF) return alert("Error cargando librería PDF."); 
+                
+                showToast("⏳ Generando PDF...");
+                
                 const { jsPDF } = window.jspdf; 
                 const doc = new jsPDF(); 
                 let hoy = getTucumanDateFE(); 
@@ -1505,7 +1503,22 @@
                 
                 doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); 
                 let ms = new Date().getTime(); 
-                doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}_${ms}.pdf`); 
+                let nombreArchivo = `Reporte_Turno_${cUser.replace(/\s+/g,'_')}_${hoy.replace(/\//g,'-')}_${ms}.pdf`;
+                
+                let pdfBlob = doc.output('blob');
+                let blobUrl = URL.createObjectURL(pdfBlob);
+                
+                let a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = nombreArchivo;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                showToast("✅ PDF listo para abrir");
+                
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 8000);
             } catch(e) { alert("Error al generar PDF: " + e.message); } 
         }
         
