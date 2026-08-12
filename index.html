@@ -162,6 +162,10 @@
         .expandable-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .expanded-card { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-width: 100% !important; margin: 0 !important; border-radius: 0 !important; z-index: 9999999 !important; background: #ffffff !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
         .expanded-card #audit-logs-container, .expanded-card #adm-inventory-list { max-height: none !important; flex: 1 1 auto !important; }
+        
+        /* MAGIA QUIRÚRGICA: Oculta el formulario de inventario al expandir para que los productos ocupen el 100% de la pantalla */
+        .expanded-card #inventario-form-wrapper { display: none !important; }
+        
         .card-header-icon { transition: transform 0.3s; font-family: 'Inter', sans-serif; }
         .expanded-card .card-header-icon { transform: rotate(180deg); color: #e11d48 !important; }
         .btn-close-expand { display: none; }
@@ -523,20 +527,22 @@
                 <span class="card-header-icon" style="font-size: 1.4rem; color: #94a3b8; line-height: 1;">⤢</span>
             </div>
             
-            <div style="display:flex; align-items:center; margin-bottom:10px;">
-                <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
-                <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
+            <div id="inventario-form-wrapper">
+                <div style="display:flex; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
+                    <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
+                </div>
+                <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
+                <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
+                <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock Cargado">
+                
+                <select id="add-unit" class="input-light-admin">
+                    <option value="Unid">Unidades</option>
+                    <option value="Kg">Kilogramos</option>
+                </select>
+                
+                <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; margin-top:10px; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">GUARDAR EN INVENTARIO</button>
             </div>
-            <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
-            <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
-            <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock Cargado">
-            
-            <select id="add-unit" class="input-light-admin">
-                <option value="Unid">Unidades</option>
-                <option value="Kg">Kilogramos</option>
-            </select>
-            
-            <button class="btn-premium" style="background:linear-gradient(135deg, #0ea5e9, #0284c7); color:white; margin-top:10px; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3);" onclick="uploadMerchandise()">GUARDAR EN INVENTARIO</button>
             
             <div id="adm-inventory-list" style="margin-top: 20px; max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
             <button class="btn-close-expand" onclick="toggleCard('card-inventario')">Cerrar Vista Completa</button>
@@ -853,8 +859,10 @@
             let newDebt = Math.max(0, currentDebt + amount);
 
             if (client) {
+                client.deuda = newDebt; // Actualización optimista para que WhatsApp lea el saldo correcto
                 await _supabase.from('ruta38_clientes').update({ deuda: newDebt }).eq('local_id', currentLocalId).eq('nombre', client.nombre);
             } else {
+                dbState.clients.push({ local_id: currentLocalId, nombre: nombre, whatsapp: wa, deuda: newDebt }); // Actualización optimista
                 await _supabase.from('ruta38_clientes').insert([{ local_id: currentLocalId, nombre: nombre, whatsapp: wa, deuda: newDebt }]);
             }
         }
