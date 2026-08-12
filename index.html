@@ -527,7 +527,7 @@
             
             <div style="display:flex; align-items:center; margin-bottom:10px;">
                 <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
-                <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
+                <input type="text" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
             </div>
             <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
             <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
@@ -562,15 +562,11 @@
         const supabaseKey = 'sb_publishable_xo7-uUQqtWvEWoLGqqlrsg_rxdroLx4';
         const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-        let dbState = { inventory:[], users:[], clients:[], finances:{}, logs:[], chart_data:{}, last_gps: null };
-        
-        let cUser = "", cPin = "", cAdminPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
-        let pendingTransferData = null, isPaywallUpload = false;
-        let tempFiadoAmount = 0;
-        
-        let lastCalculatedQty = 1;
+        // ESTADO ALIMENTADO 100% POR BASE DE DATOS SUPABASE (CERO LOCALSTORAGE)
+        let dbState = { inventory:[], clients:[], logs:[], last_gps: null };
+        let cUser = "", cUserId = null, cPin = "", cAdminPin = "", cPhone = "", selProd = null, expr = "", isEval = false;
+        let pendingTransferData = null, isPaywallUpload = false, tempFiadoAmount = 0, lastCalculatedQty = 1;
         window.gpsActive = false;
-        window.isSyncing = false; 
 
         function getTucumanDateFE() { return new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric' }); }
         function getTucumanTimeFE() { return new Date().toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit' }); }
@@ -582,48 +578,6 @@
             return str.trim();
         }
 
-        async function syncToCloud() {
-            if (!cUser) return;
-            window.isSyncing = true;
-            let payload = {
-                inventory: getLocalInventory(),
-                clients: getLocalClients(),
-                logs: getLocalLogs(),
-                deletedProducts: getLocalDeletedProducts()
-            };
-            try { await _supabase.from('ruta38_usuarios').update({ app_data: payload }).eq('local', cUser); } 
-            catch(e) { console.error("Error sincronizando", e); }
-            finally { window.isSyncing = false; }
-        }
-
-        function saveLocalLogs(log) {
-            try {
-                let existing = JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]');
-                let isDuplicate = existing.some(l => l.time === log.time && l.amount === log.amount && l.type === log.type);
-                if(!isDuplicate) { 
-                    existing.unshift(log); 
-                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(existing.slice(0, 50))); 
-                    syncToCloud(); 
-                }
-            } catch(e){}
-        }
-        function getLocalLogs() { try { return JSON.parse(localStorage.getItem('ruta38_logs_' + cUser) || '[]'); } catch(e){ return []; } }
-        
-        function saveLocalClients(clientList) { 
-            try { localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(clientList)); syncToCloud(); } catch(e){} 
-        }
-        function getLocalClients() { try { return JSON.parse(localStorage.getItem('ruta38_clients_' + cUser) || '[]'); } catch(e){ return []; } }
-        
-        function saveLocalInventory(inv) { 
-            try { localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(inv)); syncToCloud(); } catch(e){} 
-        }
-        function getLocalInventory() { try { return JSON.parse(localStorage.getItem('ruta38_inv_' + cUser) || '[]'); } catch(e){ return []; } }
-        
-        function saveLocalDeletedProducts(arr) { 
-            localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(arr)); syncToCloud(); 
-        }
-        function getLocalDeletedProducts() { try { return JSON.parse(localStorage.getItem('ruta38_del_prods_' + cUser) || '[]'); } catch(e){ return []; } }
-
         function updateDaysUI(days) { 
             const lblChofer = document.getElementById('lbl-days-chofer');
             const lblAdmin = document.getElementById('lbl-days-admin');
@@ -632,123 +586,76 @@
         }
 
         async function registerAccount() {
-            let localInput = document.getElementById('reg-local').value.trim();
+            let local = document.getElementById('reg-local').value.trim().toUpperCase();
             let pin = document.getElementById('reg-pin').value.trim();
             let adminPin = document.getElementById('reg-admin-pin').value.trim();
             let prov = document.getElementById('reg-prov').value;
             let phoneInput = document.getElementById('reg-phone').value.trim(); 
             
-            if(!localInput || !pin || !adminPin || !prov || !phoneInput) return alert("Complete todos los datos y ambos PINs."); 
+            if(!local || !pin || !adminPin || !prov || !phoneInput) return alert("Complete todos los datos."); 
+            let waLimpio = phoneInput.replace(/\s+/g, '');
             
-            let local = localInput.toUpperCase();
-
             try {
-                let waLimpio = phoneInput ? String(phoneInput).trim().replace(/\s+/g, '') : '';
-                
-                const { data: celData } = await _supabase.from('ruta38_usuarios').select('id').eq('whatsapp', waLimpio).maybeSingle();
-                if (celData) return alert("❌ PLAN ANTIPÍCARO: Este número de WhatsApp ya tiene una cuenta registrada.");
-                
-                const { data: locData } = await _supabase.from('ruta38_usuarios').select('id').eq('local', local).maybeSingle();
-                if (locData) return alert("❌ Ese Nombre de Local ya existe. Por favor, elegí otro distinto.");
-
+                // Registrar correo virtual
                 const correoTrucho = `${waLimpio}@ruta38.com`;
                 const passwordSegura = pin + "IA";
-                const { data: authData, error: authError } = await _supabase.auth.signUp({
-                    email: correoTrucho,
-                    password: passwordSegura
-                });
+                const { error: authError } = await _supabase.auth.signUp({ email: correoTrucho, password: passwordSegura });
+                if (authError) return alert("Error Auth: " + authError.message);
 
-                if (authError) return alert("❌ Error Auth: " + authError.message);
-
-                const { error } = await _supabase.from('ruta38_usuarios').insert([{ 
-                    local: local, 
-                    pin: pin, 
-                    admin_pin: adminPin, 
-                    whatsapp: waLimpio, 
-                    prov: prov 
-                }]);
+                const { error } = await _supabase.from('ruta38_usuarios').insert([{ local, pin, admin_pin: adminPin, whatsapp: waLimpio, prov }]);
+                if (error) return alert("Error Base de Datos: " + error.message);
                 
-                if (error) {
-                    alert("Error devuelto por Supabase: " + error.message);
-                    return;
-                }
-                
-                alert("¡Cuenta Creada y Blindada con Éxito!"); 
+                alert("¡Cuenta Creada con Éxito!"); 
                 document.getElementById('login-user').value = local; 
                 window.scrollTo({top: 0, behavior: 'smooth'}); 
-            } catch (err) {
-                alert("Error de sistema: " + err.message);
-            }
+            } catch (err) { alert("Error de sistema: " + err.message); }
+        }
+
+        async function fetchDbData() {
+            if(!cUserId) return;
+            
+            // Traer Inventario
+            const { data: invData } = await _supabase.from('ruta38_inventario').select('*').eq('local_id', cUserId);
+            dbState.inventory = invData || [];
+            
+            // Traer Clientes
+            const { data: cliData } = await _supabase.from('ruta38_clientes').select('*').eq('local_id', cUserId);
+            dbState.clients = cliData || [];
+            
+            // Traer Logs (Limitado a 200 para no reventar memoria)
+            const { data: logData } = await _supabase.from('ruta38_logs').select('*').eq('local_id', cUserId).order('created_at', { ascending: false }).limit(200);
+            dbState.logs = logData || [];
+
+            renderAllData();
         }
 
         async function executeLogin() {
-            let localInput = document.getElementById('login-user').value.trim();
+            let local = document.getElementById('login-user').value.trim().toUpperCase();
             let pin = document.getElementById('login-pass').value.trim();
             
-            if(!localInput || !pin) return alert("Ingresá tus datos.");
-            
-            let local = localInput.toUpperCase();
+            if(!local || !pin) return alert("Ingresá tus datos.");
             
             try {
                 const { data, error } = await _supabase.from('ruta38_usuarios').select('*').eq('local', local).eq('pin', pin).maybeSingle();
-                
-                if(error || !data) {
-                    alert("❌ Credenciales incorrectas o el PIN no pertenece a este local.");
-                    return;
-                }
+                if(error || !data) return alert("❌ Credenciales incorrectas.");
 
                 if (data.whatsapp) {
-                    const correoTrucho = `${data.whatsapp}@ruta38.com`;
-                    const passwordSegura = pin + "IA";
                     const { error: signInError } = await _supabase.auth.signInWithPassword({
-                        email: correoTrucho,
-                        password: passwordSegura
+                        email: `${data.whatsapp}@ruta38.com`,
+                        password: pin + "IA"
                     });
                     if (signInError) console.warn("Aviso Auth:", signInError.message);
                 }
-                
-                cUser = data.local; 
-                cPin = pin; 
-                cAdminPin = data.admin_pin || "0000"; 
-                cPhone = data.whatsapp || ''; 
-                
-                if (data.app_data) {
-                    let cloudData = typeof data.app_data === 'string' ? JSON.parse(data.app_data) : data.app_data;
-                    dbState.inventory = cloudData.inventory || [];
-                    dbState.clients = cloudData.clients || [];
-                    dbState.logs = cloudData.logs || [];
-                    
-                    localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
-                    localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
-                    localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
-                    localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cloudData.deletedProducts || []));
-                } else {
-                    dbState.inventory = getLocalInventory();
-                    dbState.clients = getLocalClients();
-                    dbState.logs = getLocalLogs();
-                    syncToCloud(); 
-                }
-                
-                document.getElementById('login-pass').value=''; 
-                if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
-                if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
-                
-                let diasRestantes = 0;
-                let hoy = new Date();
 
+                cUser = data.local; cUserId = data.id; cPin = pin; cAdminPin = data.admin_pin || "0000"; cPhone = data.whatsapp || ''; 
+                
+                let diasRestantes = 0; let hoy = new Date();
                 if (data.fecha_vencimiento) {
-                    let fechaVence = new Date(data.fecha_vencimiento);
-                    let diferenciaMs = fechaVence - hoy;
-                    diasRestantes = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
+                    diasRestantes = Math.ceil((new Date(data.fecha_vencimiento) - hoy) / (1000 * 60 * 60 * 24));
                 } else if (data.created_at) {
-                    let fechaCreacion = new Date(data.created_at);
-                    let diferenciaMs = hoy - fechaCreacion;
-                    let diasPasados = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
-                    diasRestantes = 30 - diasPasados;
+                    diasRestantes = 30 - Math.floor((hoy - new Date(data.created_at)) / (1000 * 60 * 60 * 24));
                 }
-
                 if (diasRestantes < 0) diasRestantes = 0;
-                
                 updateDaysUI(diasRestantes);
 
                 if (diasRestantes <= 0) {
@@ -756,33 +663,21 @@
                     return; 
                 }
                 
-                renderAllData(); 
+                if(document.getElementById('lbl-user')) document.getElementById('lbl-user').innerText = cUser;
+                if(document.getElementById('lbl-owner')) document.getElementById('lbl-owner').innerText = cUser;
+                
+                await fetchDbData();
                 go('view-chofer');
 
+                // Suscripción en tiempo real a las tablas de datos separadas
                 if(window.realtimeChannel) { _supabase.removeChannel(window.realtimeChannel); }
-                window.realtimeChannel = _supabase.channel('ruta38_realtime_' + cUser)
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ruta38_usuarios', filter: `local=eq.${cUser}` }, payload => {
-                        if (window.isSyncing) return; 
-                        
-                        let cd = payload.new.app_data;
-                        if(cd) {
-                            dbState.inventory = cd.inventory || [];
-                            dbState.clients = cd.clients || [];
-                            dbState.logs = cd.logs || [];
-                            
-                            localStorage.setItem('ruta38_inv_' + cUser, JSON.stringify(dbState.inventory));
-                            localStorage.setItem('ruta38_clients_' + cUser, JSON.stringify(dbState.clients));
-                            localStorage.setItem('ruta38_logs_' + cUser, JSON.stringify(dbState.logs));
-                            localStorage.setItem('ruta38_del_prods_' + cUser, JSON.stringify(cd.deletedProducts || []));
-                            
-                            renderAllData();
-                        }
-                    }).subscribe();
-                
-            } catch(err) {
-                alert("❌ Error de conexión: " + err.message);
-                console.error(err);
-            }
+                window.realtimeChannel = _supabase.channel('ruta38_realtime_' + cUserId)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'ruta38_inventario', filter: `local_id=eq.${cUserId}` }, fetchDbData)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'ruta38_clientes', filter: `local_id=eq.${cUserId}` }, fetchDbData)
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'ruta38_logs', filter: `local_id=eq.${cUserId}` }, fetchDbData)
+                    .subscribe();
+                    
+            } catch(err) { alert("❌ Error de conexión: " + err.message); }
         }
 
         function go(id) { 
@@ -792,15 +687,9 @@
         }
 
         function scrollToRight() { document.getElementById('calc-preview').scrollLeft = 9999; }
-        
-        function handleFontScaling() { 
-            const display = document.getElementById('calc-total'); 
-            const len = display.innerText.length; 
-            display.style.fontSize = len > 8 ? "2rem" : len > 5 ? "2.5rem" : "3.5rem"; 
-        }
-        
+        function handleFontScaling() { const display = document.getElementById('calc-total'); display.style.fontSize = display.innerText.length > 8 ? "2rem" : display.innerText.length > 5 ? "2.5rem" : "3.5rem"; }
         function evaluateExpression(exp) { if(!exp) return 0; try { return eval(exp.replace(/×/g, '*').replace(/÷/g, '/').replace(/[+\-*/]$/, '')); } catch(e) { return 0; } }
-        
+
         function parseQty(eStr) {
             if (!eStr) return 1;
             let normalized = eStr.replace(/×/g, '*');
@@ -813,116 +702,61 @@
             }
             return 1;
         }
-        
+
         function inputCalc(val) { 
             if(expr.length > 40) return; 
             if(isEval && !['+','-','×','÷'].includes(val)) { expr = ""; isEval = false; }
             expr += val; 
-            let dStr = expr.replace(/\*/g, '×').replace(/\//g, '÷'); 
-            document.getElementById('calc-preview').innerText = dStr; scrollToRight(); 
+            document.getElementById('calc-preview').innerText = expr.replace(/\*/g, '×').replace(/\//g, '÷'); scrollToRight(); 
             let temp = evaluateExpression(expr); 
-            document.getElementById('calc-total').innerText = temp !== undefined ? temp : dStr; 
-            handleFontScaling(); 
+            document.getElementById('calc-total').innerText = temp !== undefined ? temp : expr; handleFontScaling(); 
         }
-        
+
         function evalCalc() { 
             lastCalculatedQty = parseQty(expr); 
             let res = evaluateExpression(expr); 
             if(res === Infinity) { res = 0; expr = ""; } 
             document.getElementById('calc-total').innerText = res; 
-            expr = res.toString(); 
-            document.getElementById('calc-preview').innerText = ""; 
-            isEval = true; 
-            handleFontScaling(); 
+            expr = res.toString(); document.getElementById('calc-preview').innerText = ""; 
+            isEval = true; handleFontScaling(); 
         }
-        
+
         function deleteCalc() { 
             if(expr.length > 0) { 
                 expr = expr.slice(0, -1); 
-                let dStr = expr.replace(/\*/g, '×').replace(/\//g, '÷'); 
-                document.getElementById('calc-preview').innerText = dStr; scrollToRight(); 
-                document.getElementById('calc-total').innerText = expr===""?"0":evaluateExpression(expr); 
-                handleFontScaling(); 
+                document.getElementById('calc-preview').innerText = expr.replace(/\*/g, '×').replace(/\//g, '÷'); scrollToRight(); 
+                document.getElementById('calc-total').innerText = expr===""?"0":evaluateExpression(expr); handleFontScaling(); 
             } 
         }
-        
-        function clearCalc() { 
-            expr = ""; isEval = false; 
-            let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
-            let delProds = getLocalDeletedProducts();
-            invList = invList.filter(i => !delProds.includes(normCode(i.code)));
 
-            if(invList.length !== 1) { selProd = null; }
-            
-            lastCalculatedQty = 1;
+        function clearCalc() { 
+            expr = ""; isEval = false; lastCalculatedQty = 1;
+            selProd = null;
             document.getElementById('calc-preview').innerText = ""; 
             document.getElementById('calc-total').innerText = "0"; 
-            
-            renderMainScreenProduct();
-            handleFontScaling(); 
+            renderMainScreenProduct(); handleFontScaling(); 
         }
 
         window.renderCatalogModal = function() {
             let listContainer = document.getElementById('catalogo-list-container');
-            if(!listContainer) return;
-
             let searchTerm = (document.getElementById('search-catalog') ? document.getElementById('search-catalog').value.toLowerCase() : '');
             let html = '';
 
-            let invList = [];
-            if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
-            else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
-            
-            let delProds = getLocalDeletedProducts();
-            invList = invList.filter(i => !delProds.includes(normCode(i.code)));
-
-            let uniqueInv = [];
-            let seenCodes = new Set();
-            invList.forEach(i => {
-                let clean = normCode(i.code);
-                i.code = 'ART-' + clean; 
-                if(!seenCodes.has(clean)) {
-                    seenCodes.add(clean);
-                    uniqueInv.push(i);
-                }
-            });
-            
-            invList = uniqueInv;
-            
-            invList.sort((a,b) => {
-                let numA = parseInt(normCode(a.code)) || 0;
-                let numB = parseInt(normCode(b.code)) || 0;
-                return numA - numB;
-            });
-
-            let filtered = invList.filter(i => {
+            let filtered = dbState.inventory.filter(i => {
                 if(!searchTerm) return true;
-                return String(i.name).toLowerCase().includes(searchTerm) || String(i.code).toLowerCase().includes(searchTerm);
+                return String(i.nombre).toLowerCase().includes(searchTerm) || String(i.codigo).toLowerCase().includes(searchTerm);
             });
 
             if(filtered.length > 0) {
                 filtered.forEach(i => {
                     let pStock = parseFloat(i.stock) || 0;
-                    let pPrice = parseFloat(i.price) || 0;
-                    let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
-                    
-                    html += `
-                    <div style="background:#ffffff; border-radius:14px; padding:15px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:0.2s;" onclick="seleccionarDesdeCatalogo('${i.code}','${i.name}',${pPrice},'${i.measure_unit}')">
-                        <div>
-                            <div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif;">${i.code}</div>
-                            <div style="color:#475569; font-size:0.95rem; font-weight:600; margin-top:2px;">${i.name}</div>
-                            <div style="color:#0ea5e9; font-size:1.05rem; font-weight:900; margin-top:6px;">$${pPrice} <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">/ ${i.measure_unit}</span></div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">Stock</div>
-                            <div style="font-weight:900; color:#10b981; font-size:1.6rem; font-family:'Outfit',sans-serif; line-height:1;">${stockDisplay}</div>
-                        </div>
+                    let stockDisplay = i.unidad === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
+                    html += `<div style="background:#ffffff; border-radius:14px; padding:15px; border:1px solid #e2e8f0; margin-bottom:10px; display:flex; justify-content:space-between; cursor:pointer;" onclick="seleccionarDesdeCatalogo('${i.codigo}','${i.nombre}',${i.precio},'${i.unidad}')">
+                        <div><div style="font-weight:900;">${i.codigo}</div><div style="color:#475569;">${i.nombre}</div><div style="color:#0ea5e9; font-weight:900;">$${i.precio}</div></div>
+                        <div style="text-align:right;"><div style="font-size:0.75rem; color:#94a3b8;">Stock</div><div style="font-weight:900; color:#10b981; font-size:1.6rem;">${stockDisplay}</div></div>
                     </div>`;
                 });
-            } else {
-                html = '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No se encontraron artículos.</div>';
-            }
-
+            } else { html = '<div style="text-align:center; padding:20px;">No se encontraron artículos.</div>'; }
             listContainer.innerHTML = html;
         }
 
@@ -964,63 +798,53 @@
             }
         }
 
-        const updateClientDebtLocal = (name, amount, wa) => {
-            if(!dbState.clients) dbState.clients = [];
-            let client = dbState.clients.find(c => c.name.toLowerCase() === name.toLowerCase());
-            if(client) { 
-                let currentDebt = Math.abs(parseFloat(client.debt) || 0);
-                client.debt = currentDebt + amount; 
-                if (client.debt < 0) client.debt = 0; 
-            } 
-            else { 
-                dbState.clients.push({ name: name, whatsapp: wa, debt: Math.max(0, amount) }); 
-            }
-            saveLocalClients(dbState.clients);
-        };
+        // FUNCIONES QUE INTERACTÚAN DIRECTO CON LA BASE DE DATOS
+        async function saveLogDB(log) {
+            await _supabase.from('ruta38_logs').insert([{
+                local_id: cUserId, tipo: log.type, metodo: log.method, monto: log.amount, fecha: log.date, hora: log.time, descripcion: log.description, recibo_url: log.foto_base64 || null
+            }]);
+            fetchDbData();
+        }
 
-        // 🔥 FUNCIÓN MÁGICA: ENVÍO DE WHATSAPP AUTOMÁTICO EN FIADOS
+        async function updateClientDebtDB(nombre, monto, wa) {
+            let client = dbState.clients.find(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+            if (client) {
+                let nDeuda = Math.max(0, parseFloat(client.deuda) + monto);
+                await _supabase.from('ruta38_clientes').update({ deuda: nDeuda }).eq('id', client.id);
+            } else {
+                await _supabase.from('ruta38_clientes').insert([{ local_id: cUserId, nombre: nombre, whatsapp: wa, deuda: Math.max(0, monto) }]);
+            }
+            fetchDbData();
+        }
+
         function enviarReciboWhatsAppAuto(cName, amount, action, cWa) {
-            if (!cWa || cWa === 'Sin número' || cWa === 'null' || cWa === 'undefined') return;
-            let numLimpio = String(cWa).replace(/\D/g, '');
-            if (numLimpio.length === 10) numLimpio = '549' + numLimpio;
-            if (numLimpio.length < 10) return;
+            if (!cWa || cWa.length < 10) return;
+            let numLimpio = String(cWa).replace(/\D/g, ''); if (numLimpio.length === 10) numLimpio = '549' + numLimpio;
+            let client = dbState.clients.find(c => c.nombre.toLowerCase() === cName.toLowerCase());
+            let currentDebt = client ? Math.abs(parseFloat(client.deuda) || 0) : 0;
             
-            let client = dbState.clients.find(c => c.name.toLowerCase() === cName.toLowerCase());
-            let currentDebt = client ? Math.abs(parseFloat(client.debt) || 0) : 0;
-            
-            let msg = action === 'FIAR' 
-                ? `Hola ${cName}, se agregó a tu cuenta $${amount.toLocaleString('es-AR')} en ${cUser}. Tu saldo a pagar es de $${currentDebt.toLocaleString('es-AR')}. ¡Gracias!` 
-                : `Hola ${cName}, registramos tu pago de $${amount.toLocaleString('es-AR')} en ${cUser}. Tu saldo restante es de $${currentDebt.toLocaleString('es-AR')}. ¡Gracias!`;
-            
+            let msg = action === 'FIAR' ? `Hola ${cName}, se agregó a tu cuenta $${amount} en ${cUser}. Tu saldo a pagar es de $${currentDebt}. ¡Gracias!` 
+                                        : `Hola ${cName}, registramos tu pago de $${amount} en ${cUser}. Tu saldo restante es de $${currentDebt}. ¡Gracias!`;
             window.open(`https://wa.me/${numLimpio}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        function submitSale(method) {
+        async function submitSale(method) {
             let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText);
             if(val <= 0) return alert("Ingresá un monto mayor a 0");
             
-            let currentQty = parseQty(expr);
-            let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
             let codeStr = selProd ? selProd.code : 'VARIOS'; 
+            let finalQty = parseQty(expr); if(finalQty===1 && lastCalculatedQty>1) finalQty = lastCalculatedQty;
             let prodName = selProd ? selProd.name : '';
-            let desc = `Venta de ${finalQty}x ${codeStr} ${prodName ? ' - ' + prodName : ''}`;
-
-            let newLog = { type: 'VENTA', method: method, amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: desc };
-            saveLocalLogs(newLog);
-            if(!dbState.logs) dbState.logs = [];
-            dbState.logs.unshift(newLog);
+            
+            await saveLogDB({ type: 'VENTA', method: method, amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${finalQty}x ${codeStr} ${prodName ? ' - ' + prodName : ''}` });
 
             if (selProd && codeStr !== 'VARIOS') {
-                let item = dbState.inventory.find(i => normCode(i.code) === normCode(codeStr));
+                let item = dbState.inventory.find(i => normCode(i.codigo) === normCode(codeStr));
                 if (item) {
-                    item.stock = (parseFloat(item.stock) || 0) - finalQty;
+                    await _supabase.from('ruta38_inventario').update({ stock: (parseFloat(item.stock) - finalQty) }).eq('id', item.id);
                 }
-                saveLocalInventory(dbState.inventory);
             }
-
-            renderAllData(); 
-            showToast("Venta guardada localmente"); 
-            clearCalc();
+            showToast("Venta guardada"); clearCalc();
         }
 
         function abrirModalFiado() {
@@ -1038,23 +862,16 @@
             document.getElementById('fiado-modal').style.display = 'block';
         }
 
-        function crearNuevoCliente() {
-            let name = document.getElementById('new-client-name').value.trim();
+        async function crearNuevoCliente() {
+            let nombre = document.getElementById('new-client-name').value.trim();
             let wa = document.getElementById('new-client-wa').value.trim();
-            if(!name) return alert("Ingresá un nombre completo.");
+            if(!nombre) return alert("Ingresá un nombre completo.");
             
-            if(!dbState.clients) dbState.clients = [];
-            let exists = dbState.clients.find(c => c.name.toLowerCase() === name.toLowerCase());
-            if(!exists) {
-                dbState.clients.push({ name: name, whatsapp: wa, debt: 0 });
-                saveLocalClients(dbState.clients);
-                showToast("Cliente agregado a la libreta");
-            } else {
-                alert("Ese cliente ya existe en la lista.");
-            }
-            document.getElementById('new-client-name').value = '';
-            document.getElementById('new-client-wa').value = '';
-            renderFiadoClients();
+            if(!dbState.clients.find(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+                await _supabase.from('ruta38_clientes').insert([{ local_id: cUserId, nombre, whatsapp: wa, deuda: 0 }]);
+                fetchDbData(); showToast("Cliente agregado");
+            } else { alert("Ese cliente ya existe."); }
+            document.getElementById('new-client-name').value = ''; document.getElementById('new-client-wa').value = '';
         }
 
         function renderFiadoClients() {
@@ -1063,586 +880,216 @@
             
             let searchTerm = document.getElementById('search-client').value.toLowerCase();
             let html = '';
-            
-            let cliList = [];
-            if (Array.isArray(dbState.clients)) { cliList = dbState.clients; } 
-            else if (dbState.clients && typeof dbState.clients === 'object') { cliList = Object.values(dbState.clients); }
-            
-            cliList.sort((a,b) => {
-                let debtA = Math.abs(parseFloat(a.debt) || 0);
-                let debtB = Math.abs(parseFloat(b.debt) || 0);
-                if (debtB !== debtA) return debtB - debtA;
-                return a.name.localeCompare(b.name);
-            });
+            let cliList = [...dbState.clients].sort((a,b) => b.deuda - a.deuda);
 
             cliList.forEach(c => {
-                if(searchTerm && !c.name.toLowerCase().includes(searchTerm)) return;
-                
-                let pDebt = Math.abs(parseFloat(c.debt) || 0);
-                let waText = (c.whatsapp && String(c.whatsapp).trim().length > 5) ? c.whatsapp : 'Sin número';
-                
+                if(searchTerm && !c.nombre.toLowerCase().includes(searchTerm)) return;
                 html += `
-                <div style="background:#ffffff; border-radius:16px; padding:15px; border:1px solid #e2e8f0; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                        <div>
-                            <div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif; text-transform:uppercase;">${c.name}</div>
-                            <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">📱 ${waText}</div>
-                        </div>
-                        <div style="font-weight:900; font-size:1.4rem; color:#0369a1; font-family:'Outfit',sans-serif;">$${pDebt.toLocaleString('es-AR')}</div>
+                <div style="background:#ffffff; border-radius:16px; padding:15px; border:1px solid #e2e8f0; margin-bottom:10px; box-shadow:0 4px 10px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                        <div><div style="font-weight:900; font-size:1.15rem; font-family:'Outfit',sans-serif; text-transform:uppercase;">${c.nombre}</div><div style="font-size:0.8rem; color:#64748b;">📱 ${c.whatsapp || 'Sin número'}</div></div>
+                        <div style="font-weight:900; font-size:1.4rem; color:#0369a1; font-family:'Outfit',sans-serif;">$${parseFloat(c.deuda).toLocaleString('es-AR')}</div>
                     </div>
-                    
                     <div style="background:#fef2f2; border: 1px dashed #f87171; border-radius:12px; padding:10px; margin-bottom:8px;">
-                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #b91c1c; text-transform: uppercase; text-align:center;">¿Va a fiar?</p>
-                        <button style="width:100%; background:#ef4444; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.95rem; box-shadow:0 4px 10px rgba(239,68,68,0.3); cursor:pointer;" onclick="submitFiado('FIAR', '${c.name}', '${c.whatsapp}')">🔴 SUMAR DEUDA</button>
+                        <button style="width:100%; background:#ef4444; color:white; border:none; border-radius:10px; padding:12px; font-weight:900;" onclick="submitFiado('FIAR', '${c.nombre}', '${c.whatsapp}')">🔴 SUMAR DEUDA</button>
                     </div>
-
                     <div style="background:#ecfdf5; border: 1px dashed #34d399; border-radius:12px; padding:10px;">
-                        <p style="margin: 0 0 8px 0; font-size: 0.75rem; font-weight: 800; color: #047857; text-transform: uppercase; text-align:center;">¿Viene a pagar?</p>
                         <div style="display:flex; gap:8px;">
-                            <button style="flex:1; background:#10b981; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(16,185,129,0.3); cursor:pointer;" onclick="submitFiado('COBRO_EFECTIVO', '${c.name}', '${c.whatsapp}')">💵 EFECTIVO</button>
-                            <button style="flex:1; background:#0ea5e9; color:white; border:none; border-radius:10px; padding:12px; font-weight:900; font-size:0.85rem; box-shadow:0 4px 10px rgba(14,165,233,0.3); cursor:pointer;" onclick="submitFiado('COBRO_TRANSF', '${c.name}', '${c.whatsapp}')">🏦 TRANSF</button>
+                            <button style="flex:1; background:#10b981; color:white; border:none; border-radius:10px; padding:12px; font-weight:900;" onclick="submitFiado('COBRO_EFECTIVO', '${c.nombre}', '${c.whatsapp}')">💵 COBRAR EFE</button>
+                            <button style="flex:1; background:#0ea5e9; color:white; border:none; border-radius:10px; padding:12px; font-weight:900;" onclick="submitFiado('COBRO_TRANSF', '${c.nombre}', '${c.whatsapp}')">🏦 TRANSF</button>
                         </div>
                     </div>
                 </div>`;
             });
-            
-            listContainer.innerHTML = html || '<div style="text-align:center; color:#94a3b8; padding:20px; font-weight:600;">No hay clientes en la lista. Creá uno arriba.</div>';
+            listContainer.innerHTML = html || '<div style="text-align:center;">No hay clientes.</div>';
         }
 
         function renderAllData() {
             let adminInvHtml = '';
-            try {
-                let invList = [];
-                if (Array.isArray(dbState.inventory)) { invList = dbState.inventory; } 
-                else if (dbState.inventory && typeof dbState.inventory === 'object') { invList = Object.values(dbState.inventory); }
-                
-                let delProds = getLocalDeletedProducts();
-                invList = invList.filter(i => !delProds.includes(normCode(i.code)));
-
-                let uniqueInv = [];
-                let seenCodes = new Set();
-                
-                invList.forEach(i => {
-                    let clean = normCode(i.code);
-                    i.code = 'ART-' + clean; 
-                    
-                    if(!seenCodes.has(clean)) {
-                        seenCodes.add(clean);
-                        uniqueInv.push(i);
-                    }
-                });
-                
-                invList = uniqueInv; 
-
-                if(invList.length > 0) {
-                    invList.forEach(i => {
-                        let pStock = parseFloat(i.stock) || 0;
-                        let pPrice = parseFloat(i.price) || 0;
-                        let stockDisplay = i.measure_unit === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
-                        
-                        adminInvHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:12px; border-radius:12px; margin-top:10px; border:1px solid #e2e8f0;"><div><div style="color:#0f172a; font-weight:800; font-family:'Outfit',sans-serif;">${i.code} - ${i.name}</div><div style="color:#0ea5e9; font-size:0.85rem; font-weight:600;">$${pPrice} / ${i.measure_unit}</div></div><div style="text-align:right; display:flex; gap:12px; align-items:center;"><div style="color:#10b981; font-weight:900; font-size:1.2rem; font-family:'Outfit',sans-serif;">${stockDisplay}</div><button onclick="eliminarProducto('${i.code}')" style="background:#ffe4e6; border:none; border-radius:8px; color:#e11d48; padding:6px 12px; cursor:pointer;">🗑️</button></div></div>`;
-                    });
-
-                    if(invList.length === 1 && !selProd) {
-                        selProd = { code: invList[0].code, name: invList[0].name, price: parseFloat(invList[0].price), unit: invList[0].measure_unit };
-                        
-                        expr = ""; isEval = false; 
-                        document.getElementById('calc-preview').innerText = ""; 
-                        document.getElementById('calc-total').innerText = "0"; 
-                        inputCalc(selProd.price.toString()); 
-                        inputCalc('×'); 
-                        document.getElementById('calc-preview').innerText = `${selProd.code} - ${selProd.name} | $${selProd.price} × `; 
-                    }
-                }
-            } catch(e) { console.error("Error al renderizar el inventario", e); }
+            let invList = [...dbState.inventory].sort((a,b) => parseInt(normCode(a.codigo)) - parseInt(normCode(b.codigo)));
             
-            renderMainScreenProduct();
+            invList.forEach(i => {
+                let pStock = parseFloat(i.stock) || 0;
+                let stockDisplay = i.unidad === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
+                
+                adminInvHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; padding:12px; border-radius:12px; margin-top:10px; border:1px solid #e2e8f0;"><div><div style="color:#0f172a; font-weight:800; font-family:'Outfit',sans-serif;">${i.codigo} - ${i.nombre}</div><div style="color:#0ea5e9; font-size:0.85rem; font-weight:600;">$${i.precio} / ${i.unidad}</div></div><div style="text-align:right; display:flex; gap:12px; align-items:center;"><div style="color:#10b981; font-weight:900; font-size:1.2rem; font-family:'Outfit',sans-serif;">${stockDisplay}</div><button onclick="eliminarProducto('${i.id}')" style="background:#ffe4e6; border:none; border-radius:8px; color:#e11d48; padding:6px 12px; cursor:pointer;">🗑️</button></div></div>`;
+            });
             
             let listAdmin = document.getElementById('adm-inventory-list');
-            if(listAdmin) listAdmin.innerHTML = adminInvHtml || '<div style="text-align:center; padding:15px; color:#64748b; font-size:0.85rem; font-weight:600;">Sin stock cargado.</div>';
+            if(listAdmin) listAdmin.innerHTML = adminInvHtml || '<div style="text-align:center;">Sin stock cargado.</div>';
 
-            let deudoresHtml = '';
-            try {
-                let cliList = [];
-                if (Array.isArray(dbState.clients)) { cliList = dbState.clients; } 
-                else if (dbState.clients && typeof dbState.clients === 'object') { cliList = Object.values(dbState.clients); }
+            let deudoresHtml = ''; let totalFia = 0;
+            dbState.clients.filter(c => parseFloat(c.deuda) > 0).forEach(c => {
+                totalFia += parseFloat(c.deuda);
+                let waColor = (!c.whatsapp || c.whatsapp === '') ? '#e11d48' : '#d97706';
+                deudoresHtml += `<div style="background:#ffffff; padding:18px; border-radius:16px; margin-bottom:12px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;"><div><div style="font-weight:900; color:#0f172a; font-size:1.15rem; font-family:'Outfit',sans-serif;">${c.nombre}</div><div style="font-size:0.85rem; color:${waColor}; font-weight:800; margin-top:6px;" onclick="editWa('${c.nombre}')">📱 ${c.whatsapp || 'Falta número'}</div></div><div style="text-align:right;"><div style="font-weight:900; font-size:1.3rem; color:#e11d48; margin-bottom:8px;">$${parseFloat(c.deuda).toLocaleString('es-AR')}</div><div style="display:flex; gap:8px;"><button onclick="eliminarDeudor('${c.nombre}')" style="background:#ffe4e6; border:1px solid #fda4af; color:#e11d48; border-radius:10px; padding:6px 12px; cursor:pointer;">🗑️</button><button onclick="enviarRecordatorio('${c.nombre}', ${c.deuda}, '${c.whatsapp}')" style="background:#10b981; border:none; border-radius:10px; padding:6px 14px; font-weight:800; color:white; cursor:pointer;">Cobrar</button></div></div></div>`;
+            });
 
-                if(cliList.length > 0) {
-                    let owes = cliList.filter(c => Math.abs(parseFloat(c.debt) || 0) > 0); 
-                    
-                    let totalFia = owes.reduce((acc, c) => acc + Math.abs(parseFloat(c.debt) || 0), 0);
-                    if(document.getElementById('adm-fiado')) document.getElementById('adm-fiado').innerText = `$${totalFia.toLocaleString('es-AR')}`;
-                    
-                    if(owes.length > 0) { 
-                        owes.forEach(c => { 
-                            let pDebt = Math.abs(parseFloat(c.debt) || 0);
-                            let waText = (c.whatsapp && String(c.whatsapp).trim().length > 5) ? c.whatsapp : 'Falta número'; 
-                            let waColor = waText === 'Falta número' ? '#e11d48' : '#d97706'; 
-                            
-                            deudoresHtml += `<div style="background:#ffffff; padding:18px; border-radius:16px; margin-bottom:12px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02);"><div><div style="font-weight:900; color:#0f172a; font-size:1.15rem; text-transform:uppercase; letter-spacing: 0.5px; font-family:'Outfit',sans-serif;">${c.name}</div><div style="font-size:0.85rem; color:${waColor}; font-weight:800; cursor:pointer; margin-top:6px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 8px; display:inline-block;" onclick="editWa('${c.name}')">📱 ${waText}</div></div><div style="text-align:right;"><div style="font-weight:900; font-size:1.3rem; color:#e11d48; margin-bottom:8px; font-family:'Outfit',sans-serif;">$${pDebt.toLocaleString('es-AR')}</div><div style="display:flex; gap:8px; justify-content:flex-end;"><button onclick="eliminarDeudor('${c.name}')" style="background:#ffe4e6; border:1px solid #fda4af; color:#e11d48; border-radius:10px; padding:6px 12px; font-size:1rem; cursor:pointer;">🗑️</button><button onclick="enviarRecordatorio('${c.name}', ${pDebt}, '${c.whatsapp}')" style="background:#10b981; border:none; border-radius:10px; padding:6px 14px; font-weight:800; font-size:0.85rem; color:white; cursor:pointer; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">Cobrar</button></div></div></div>`; 
-                        }); 
-                    } else { deudoresHtml = '<p style="color:#64748b; font-size:0.9rem; font-weight: 600; text-align:center;">No hay deudas activas.</p>'; }
-                } else { 
-                    if(document.getElementById('adm-fiado')) document.getElementById('adm-fiado').innerText = "$0"; 
-                    deudoresHtml = '<p style="color:#64748b; font-size:0.9rem; font-weight: 600; text-align:center;">No hay clientes en la libreta.</p>'; 
-                }
-            } catch(e) {}
-            
+            if(document.getElementById('adm-fiado')) document.getElementById('adm-fiado').innerText = `$${totalFia.toLocaleString('es-AR')}`;
             let admDeu = document.getElementById('adm-deudores-list');
-            if(admDeu) admDeu.innerHTML = deudoresHtml;
+            if(admDeu) admDeu.innerHTML = deudoresHtml || '<p style="text-align:center;">No hay deudas activas.</p>';
 
-            let adminLogsArray = [], choferLogsArray = [];
-            let calcCash = 0, calcTransf = 0;
-
-            try {
-                let combinedLogs = [...getLocalLogs(), ...(dbState.logs || [])];
-                let uniqueLogs = combinedLogs.filter((v,i,a)=>a.findIndex(t=>(t.time === v.time && t.amount === v.amount && t.type === v.type))===i).slice(0, 80);
+            // Lógica de auditoría que corta en el Cierre de Caja
+            let adminLogsArray = [], choferLogsArray = [], calcCash = 0, calcTransf = 0;
+            
+            for(let l of dbState.logs) {
+                let pAmt = parseFloat(l.monto) || 0;
+                let typeStr = String(l.tipo).toUpperCase();
+                let descStr = String(l.descripcion);
+                let methodStr = String(l.metodo).toUpperCase();
                 
-                dbState.logs = uniqueLogs;
+                // Si encontramos un Cierre, lo sumamos al historial pero FRENAMOS los cálculos matemáticos de la caja
+                if (typeStr === 'SISTEMA' || descStr.toLowerCase().includes('cierre de caja')) {
+                    adminLogsArray.push(`<div class="log-row" style="background:#f1f5f9!important; border-bottom:1px solid #eee; padding:10px 0;"><div style="flex:1;"><b style="font-size:12px;">🔒 SISTEMA</b> <span style="color:gray; font-size:10px;">${l.hora}</span><br>${descStr}</div></div>`);
+                    break; 
+                }
 
-                uniqueLogs.forEach(l => {
-                    let pAmt = parseFloat(l.amount) || 0;
-                    let typeDisplay = l.type ? l.type.toUpperCase() : 'VENTA';
-                    let methodStr = (l.method || '').toUpperCase();
-                    
-                    if (typeDisplay !== 'SISTEMA' && (!l.description || !String(l.description).toLowerCase().includes('cierre'))) {
-                        if (methodStr === 'EFECTIVO' || methodStr === 'DEBITO') {
-                            calcCash += pAmt; 
-                        } else if (methodStr === 'TRANSFERENCIA') {
-                            calcTransf += pAmt;
-                        }
-                    }
-                    
-                    let amtColor = '#10b981'; 
-                    if (typeDisplay === 'COBRO' || methodStr === 'EFECTIVO' || methodStr === 'TRANSFERENCIA') {
-                        if (typeDisplay !== 'SALIDA') amtColor = '#10b981'; 
-                    }
-                    if (methodStr === 'FIADO') amtColor = '#0ea5e9'; 
-                    if (typeDisplay === 'SALIDA') amtColor = '#e11d48'; 
-                    
-                    if(typeDisplay === 'SISTEMA' || (l.description && String(l.description).toLowerCase().includes('cierre'))) {
-                        amtColor = '#64748b'; 
-                    }
-                    
-                    let icon = methodStr === 'EFECTIVO' ? '💵' : methodStr === 'TRANSFERENCIA' ? '🏦' : methodStr === 'FIADO' ? '📝' : typeDisplay === 'SISTEMA' ? '💰' : '💸';
-                    let descColor = '#1e293b'; 
-                    
-                    let descStr = l.description ? String(l.description) : (typeDisplay === 'VENTA' || typeDisplay === 'SALE' ? 'Venta registrada' : "Registro Vacío"); 
-                    
-                    let amt = pAmt === 0 ? '-' : `$${Math.abs(pAmt).toLocaleString('es-AR')}`; let receiptBtn = '';
-                    if(l.foto_base64 && l.foto_base64.length > 50) { receiptBtn = `<div style="margin-top:10px;"><button onclick="openReceipt('${l.foto_base64}')" style="background:#f1f5f9; border: 1px solid #cbd5e1; color:#0f172a; padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.75rem; cursor:pointer;">📸 VER TICKET</button></div>`; }
-                    let methodDisplay = methodStr === 'TRANSFERENCIA' ? 'TRANSF.' : methodStr;
-                    
-                    let row = `<div class="log-row"><div class="log-left">${icon}</div><div class="log-info"><div class="log-type" style="color:#64748b;">${typeDisplay}</div><div class="log-date" style="color:#94a3b8;">${l.date || ''} ${l.time || ''}</div><div class="log-desc" style="color:${descColor}; font-weight:800;">${descStr}${receiptBtn}</div></div><div class="log-right"><div class="log-amt" style="color:${amtColor};">${amt}</div><div class="log-method" style="color:#94a3b8;">${methodDisplay}</div></div></div>`;
-                    
-                    adminLogsArray.push(row); 
-                    if(typeDisplay !== 'SISTEMA') { choferLogsArray.push(row); }
-                });
-            } catch(e) {}
+                if (methodStr === 'EFECTIVO' || methodStr === 'DEBITO') calcCash += pAmt; 
+                else if (methodStr === 'TRANSFERENCIA') calcTransf += pAmt;
+
+                let icon = methodStr === 'EFECTIVO' ? '💵' : methodStr === 'TRANSFERENCIA' ? '🏦' : methodStr === 'FIADO' ? '📝' : typeStr === 'SISTEMA' ? '💰' : '💸';
+                let amtColor = '#10b981'; 
+                if (methodStr === 'FIADO') amtColor = '#0ea5e9'; 
+                if (typeStr === 'SALIDA') amtColor = '#e11d48'; 
+
+                let receiptBtn = l.recibo_url ? `<br><button onclick="openReceipt('${l.recibo_url}')" style="margin-top:10px; background:#f1f5f9; border: 1px solid #cbd5e1; color:#0f172a; padding:6px 14px; border-radius:10px; font-weight:800; font-size:0.75rem;">📸 VER TICKET</button>` : '';
+                
+                let row = `<div class="log-row"><div class="log-left">${icon}</div><div class="log-info"><div class="log-type" style="color:#64748b;">${typeStr}</div><div class="log-date" style="color:#94a3b8;">${l.fecha} ${l.hora}</div><div class="log-desc" style="color:#1e293b; font-weight:800;">${descStr}${receiptBtn}</div></div><div class="log-right"><div class="log-amt" style="color:${amtColor};">$${Math.abs(pAmt).toLocaleString('es-AR')}</div><div class="log-method" style="color:#94a3b8;">${methodStr}</div></div></div>`;
+                
+                adminLogsArray.push(row); 
+                choferLogsArray.push(row);
+            }
 
             if(document.getElementById('adm-cash')) document.getElementById('adm-cash').innerText = `$${calcCash.toLocaleString('es-AR')}`; 
             if(document.getElementById('adm-transf')) document.getElementById('adm-transf').innerText = `$${calcTransf.toLocaleString('es-AR')}`;
-            
             let admLogs = document.getElementById('audit-logs-container');
-            if(admLogs) admLogs.innerHTML = adminLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600;">Sin movimientos.</div>';
-            
+            if(admLogs) admLogs.innerHTML = adminLogsArray.join('') || '<div style="text-align:center;">Sin movimientos.</div>';
             let chfLogs = document.getElementById('chofer-logs-modal-container');
-            if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center; padding:20px; color:#64748b; font-weight:600; font-size:0.9rem;">Tus ventas aprobadas aparecerán aquí.</div>';
-
-            let admGps = document.getElementById('adm-gps');
-            if (admGps) {
-                if (dbState.last_gps && dbState.last_gps.lat) {
-                    let lat = dbState.last_gps.lat;
-                    let lon = dbState.last_gps.lon;
-                    let time = dbState.last_gps.time;
-                    
-                    admGps.innerHTML = `
-                        <div style="text-align: left; margin-bottom: 8px;">
-                            <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800;">⏱️ Actualizado: ${time}</span>
-                        </div>
-                        <iframe 
-                            width="100%" 
-                            height="220" 
-                            style="border:0; border-radius:12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);" 
-                            loading="lazy" 
-                            allowfullscreen 
-                            src="https://maps.google.com/maps?q=${lat},${lon}&z=16&output=embed">
-                        </iframe>
-                        <button onclick="window.open('https://www.google.com/maps?q=${lat},${lon}', '_blank')" style="width: 100%; margin-top: 10px; background: #f8fafc; border: 1px solid #cbd5e1; color: #0f172a; padding: 10px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor: pointer;">🗺️ ABRIR EN APP DE GOOGLE MAPS</button>
-                    `;
-                } else {
-                    admGps.innerHTML = '<p style="color:#64748b; font-size:0.85rem; padding: 20px 0;">El chofer debe encender el GPS (Botón superior).</p>';
-                }
-            }
+            if(chfLogs) chfLogs.innerHTML = choferLogsArray.join('') || '<div style="text-align:center;">Tus ventas aparecerán aquí.</div>';
         }
 
         function showToast(msg) { let t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = "1"; t.style.transform = "translateY(0)"; setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(-20px)"; }, 2500); }
-        
-        function verifyAdminPin() { 
-            let p = document.getElementById('pin-input').value; 
-            if(p === cAdminPin) { 
-                document.getElementById('pin-modal').style.display='none'; 
-                document.getElementById('pin-input').value=''; 
-                go('view-admin'); 
-            } else {
-                alert("❌ Clave Incorrecta."); 
-            }
-        }
-        
-        function openReceipt(base64str) { document.getElementById('receipt-img').src = base64str; document.getElementById('receipt-modal').style.display = 'flex'; }
-        
-        function eliminarDeudor(name) { 
-            if(confirm(`¿ELIMINAR deuda de ${name}?`)) {
-                dbState.clients = dbState.clients.filter(c => c.name !== name);
-                saveLocalClients(dbState.clients);
-                renderAllData();
-            }
-        }
+        function verifyAdminPin() { if(document.getElementById('pin-input').value === cAdminPin) { document.getElementById('pin-modal').style.display='none'; document.getElementById('pin-input').value=''; go('view-admin'); } else { alert("❌ Clave Incorrecta."); } }
+        function openReceipt(url) { document.getElementById('receipt-img').src = url; document.getElementById('receipt-modal').style.display = 'flex'; }
+        function triggerExpenseModal() { let val = evaluateExpression(expr); if(val<=0) val = parseFloat(document.getElementById('calc-total').innerText); if(val<=0) return alert("Calculá el gasto."); document.getElementById('exp-monto-text').innerText = `$${val}`; document.getElementById('expense-modal').style.display = 'flex'; }
 
-        function editWa(name) { let nuevo = prompt(`WhatsApp para ${name}:`); if(nuevo) { } }
-        
-        function enviarRecordatorio(nombre, deuda, wa) { 
-            if(!wa || wa === '' || wa === 'null' || wa === 'undefined') return alert("❌ Este cliente no tiene un número registrado."); 
-            let numLimpio = String(wa).replace(/[^0-9]/g, ''); 
-            if (numLimpio.length === 10) numLimpio = '549' + numLimpio; 
-            let msg = `Hola, buen día. Te escribimos de ${cUser}, pasamos a recordarte que por la semana tenés una cuenta pendiente a pagar de *$${parseFloat(deuda).toLocaleString('es-AR')}*. ¡Muchas gracias!`; 
-            window.open(`https://wa.me/${numLimpio}?text=${encodeURIComponent(msg)}`, '_blank'); 
-        }
-        
-        function triggerExpenseModal() { let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); if(val <= 0) return alert("Calculá el gasto primero en la caja."); document.getElementById('exp-monto-text').innerText = `$${val.toLocaleString('es-AR')}`; document.getElementById('expense-modal').style.display = 'flex'; }
-        
-        function submitExpense() { 
+        async function submitExpense() { 
             let rsn = document.getElementById('exp-rsn').value.trim() || 'Gasto Operativo'; 
-            let val = evaluateExpression(expr); if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
-            
-            let newLog = { type: 'SALIDA', method: 'EFECTIVO', amount: -val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: rsn };
-            saveLocalLogs(newLog);
-            if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
-
+            let val = evaluateExpression(expr); if(val<=0) val = parseFloat(document.getElementById('calc-total').innerText); 
+            await saveLogDB({ type: 'SALIDA', method: 'EFECTIVO', amount: -val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: rsn });
             document.getElementById('expense-modal').style.display = 'none'; document.getElementById('exp-rsn').value = ''; clearCalc(); showToast("Salida Registrada"); 
         }
-        
+
         function abrirSheetTransfVenta() { 
-            let val = evaluateExpression(expr); 
-            if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
-            if(val <= 0) return alert("❌ Calculá el monto de la transferencia primero en la caja."); 
-            
-            let currentQty = parseQty(expr);
-            let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
-            
-            pendingTransferData = { 
-                type: 'SALE', 
-                method: 'TRANSFERENCIA', 
-                amount: val,
-                product: selProd,
-                qty: finalQty
-            }; 
-            
-            document.getElementById('sheet-overlay').classList.add('show'); 
-            document.getElementById('native-bottom-sheet').classList.add('show'); 
+            let val = evaluateExpression(expr); if(val<=0) val = parseFloat(document.getElementById('calc-total').innerText); if(val<=0) return alert("Calculá el monto."); 
+            pendingTransferData = { type: 'SALE', amount: val, product: selProd, qty: parseQty(expr) }; 
+            document.getElementById('sheet-overlay').classList.add('show'); document.getElementById('native-bottom-sheet').classList.add('show'); 
         }
         function abrirSheetTransfCobro() { document.getElementById('fiado-modal').style.display='none'; document.getElementById('sheet-overlay').classList.add('show'); document.getElementById('native-bottom-sheet').classList.add('show'); }
         function cerrarSheet() { document.getElementById('sheet-overlay').classList.remove('show'); document.getElementById('native-bottom-sheet').classList.remove('show'); }
-        function elegirCamara() { document.getElementById('foto-input-camara').click(); setTimeout(() => { cerrarSheet(); }, 500); }
-        function elegirGaleria() { document.getElementById('foto-input-galeria').click(); setTimeout(() => { cerrarSheet(); }, 500); }
-        
-        async function uploadFotoRuta38(base64Str) {
+        function elegirCamara() { document.getElementById('foto-input-camara').click(); setTimeout(() => cerrarSheet(), 500); }
+        function elegirGaleria() { document.getElementById('foto-input-galeria').click(); setTimeout(() => cerrarSheet(), 500); }
+
+        async function uploadFotoRuta38(file) {
             try {
-                const base64Data = base64Str.split(',')[1];
-                const byteCharacters = atob(base64Data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], {type: 'image/jpeg'});
-                
-                const fileName = `${cUser.replace(/\s+/g, '')}/FOTO-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
-                
-                const { data, error } = await _supabase.storage.from('ruta38_comprobantes').upload(fileName, blob);
-                if (error) return base64Str; 
-                
+                const fileName = `${cUser.replace(/\s+/g, '')}/FOTO-${Date.now()}.jpg`;
+                const { data, error } = await _supabase.storage.from('ruta38_comprobantes').upload(fileName, file);
+                if (error) throw error;
                 const { data: publicUrlData } = _supabase.storage.from('ruta38_comprobantes').getPublicUrl(fileName);
                 return publicUrlData.publicUrl; 
-            } catch(e) { return base64Str; }
+            } catch(e) { console.log(e); return null; }
         }
 
-        function processTransferWithPhoto(e) { 
+        async function processTransferWithPhoto(e) { 
             const f = e.target.files[0]; 
-            if(!f) { 
-                if(!isPaywallUpload && confirm("⚠️ ¿Registrar IGUAL la transferencia SIN comprobante?")) emitPendingTransferHTTP(null); 
-                isPaywallUpload = false; return; 
-            } 
-            document.getElementById('calc-preview').innerText = "⏳ COMPRIMIENDO FOTO..."; 
-            const r = new FileReader(); 
-            r.readAsDataURL(f); 
-            r.onload = ev => { 
-                const img = new Image(); 
-                img.src = ev.target.result; 
-                img.onload = async () => { 
-                    const c = document.createElement('canvas'); 
-                    let targetWidth = 800; // 🔥 CORREGIDO PARA LA IA
-                    let scale = targetWidth / img.width; 
-                    c.width = targetWidth; 
-                    c.height = img.height * scale; 
-                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); 
-                    let base64 = c.toDataURL('image/jpeg', 0.80); // 🔥 CORREGIDO PARA LA IA
-                    
-                    if (isPaywallUpload) { 
-                        ejecutarValidacionPaywallIA(base64); 
-                    } else { 
-                        document.getElementById('calc-preview').innerText = "☁️ SUBIENDO A LA NUBE...";
-                        let urlLiviana = await uploadFotoRuta38(base64);
-                        document.getElementById('calc-preview').innerText = "";
-                        emitPendingTransferHTTP(urlLiviana); 
-                    } 
-                } 
-                img.onerror = () => { emitPendingTransferHTTP(null); }
-            } 
+            if(!f) { if(confirm("¿Registrar SIN comprobante?")) emitPendingTransferHTTP(null); return; } 
+            document.getElementById('calc-preview').innerText = "☁️ SUBIENDO A LA NUBE...";
+            let urlPublica = await uploadFotoRuta38(f);
+            document.getElementById('calc-preview').innerText = "";
+            emitPendingTransferHTTP(urlPublica); 
         }
-        
-        async function ejecutarValidacionPaywallIA(base64str) { 
-            document.getElementById('ia-status').style.display = 'block'; 
-            try { 
-                let r = await fetch('/api/validate_payment', { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ local: cUser, fotoBase64: base64str }) 
-                }); 
-                let d = await r.json(); 
-                document.getElementById('ia-status').style.display = 'none'; 
-                if(d.success) { 
-                    alert("✅ " + d.msg); 
-                    document.getElementById('paywall-modal').style.display = 'none'; 
-                    updateDaysUI(30);
-                    go('view-chofer'); 
-                } else { 
-                    alert("❌ " + d.msg); 
-                } 
-            } catch(e) { 
-                alert("❌ Falló el enlace con la IA."); 
-                document.getElementById('ia-status').style.display = 'none'; 
-            } 
-            isPaywallUpload = false; 
-            document.getElementById('foto-input-camara').value = ""; 
-            document.getElementById('foto-input-galeria').value = ""; 
-        }
-        
-        async function emitPendingTransferHTTP(base64str) { 
+
+        async function emitPendingTransferHTTP(urlBase) { 
             let pData = pendingTransferData || {}; 
             let val = pData.amount; 
-            if(!val || val <= 0) { 
-                val = evaluateExpression(expr); 
-                if(val <= 0) val = parseFloat(document.getElementById('calc-total').innerText); 
-            } 
-            
-            let payload = { 
-                local: cUser, 
-                actor: cUser || 'Chofer', 
-                amount: val, 
-                method: 'TRANSFERENCIA', 
-                receipt: base64str
-            }; 
             
             if(pData.type === 'COBRO_TRANSF') { 
-                payload.type = 'FIADO_COBRO'; 
-                payload.clientName = pData.cName || 'CLIENTE'; 
-                payload.clientPhone = pData.cWa || ''; 
-                
-                let newLog = { type: 'COBRO', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${payload.clientName} (TRANSFERENCIA)`, foto_base64: base64str };
-                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
-                updateClientDebtLocal(payload.clientName, -val, payload.clientPhone);
-                enviarReciboWhatsAppAuto(payload.clientName, val, 'COBRO', payload.clientPhone); // 🔥 AGREGADO
-                renderAllData();
+                await saveLogDB({ type: 'COBRO', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${pData.cName} (TRANSF)`, foto_base64: urlBase });
+                await updateClientDebtDB(pData.cName, -val, pData.cWa);
+                enviarReciboWhatsAppAuto(pData.cName, val, 'COBRO', pData.cWa);
             } else { 
-                payload.type = 'SALE'; 
-                payload.code = (pData.product && pData.product.code) ? pData.product.code : 'VARIOS'; 
-                payload.qty = pData.qty || 1; 
+                let code = (pData.product && pData.product.code) ? pData.product.code : 'VARIOS'; 
+                let qty = pData.qty || 1;
+                let prodName = (pData.product && pData.product.name) ? pData.product.name : '';
                 
-                if (pData.product && payload.code !== 'VARIOS') {
-                    let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
-                    let item = invList.find(i => normCode(i.code) === normCode(payload.code));
-                    if (item) {
-                        item.stock = (parseFloat(item.stock) || 0) - payload.qty;
-                    }
-                    dbState.inventory = invList;
-                    saveLocalInventory(dbState.inventory);
+                await saveLogDB({ type: 'VENTA', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${qty}x ${code} ${prodName ? ' - ' + prodName : ''} (TRANSF)`, foto_base64: urlBase });
+                
+                if (pData.product && code !== 'VARIOS') {
+                    let item = dbState.inventory.find(i => normCode(i.codigo) === normCode(code));
+                    if (item) await _supabase.from('ruta38_inventario').update({ stock: (parseFloat(item.stock) - qty) }).eq('id', item.id);
                 }
-
-                let prodNameT = (pData.product && pData.product.name) ? pData.product.name : '';
-                let descTransfer = `Venta de ${payload.qty}x ${payload.code} ${prodNameT ? ' - ' + prodNameT : ''} (TRANSF)`;
-                
-                let newLog = { type: 'VENTA', method: 'TRANSFERENCIA', amount: val, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: descTransfer, foto_base64: base64str };
-                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); renderAllData();
             } 
-
-            clearCalc();
-            showToast("Transferencia registrada localmente.");
+            clearCalc(); showToast("Transferencia registrada");
             document.getElementById('foto-input-camara').value = ""; document.getElementById('foto-input-galeria').value = ""; pendingTransferData = null; 
         }
-        
-        function submitFiado(actionType, cName, cWa) { 
-            if(!cName) return;
+
+        async function submitFiado(actionType, cName, cWa) { 
             if(actionType === 'FIAR') { 
                 let codeStr = selProd ? selProd.code : 'VARIOS';
-                let currentQty = parseQty(expr);
-                let finalQty = (currentQty === 1 && lastCalculatedQty > 1) ? lastCalculatedQty : currentQty;
-                
+                let qty = parseQty(expr);
                 let prodNameF = selProd ? selProd.name : '';
-                let descFiado = `Venta de ${finalQty}x ${codeStr} ${prodNameF ? ' - ' + prodNameF : ''} a ${cName} (FIADO)`;
-                let newLog = { type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: descFiado };
-                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
-                updateClientDebtLocal(cName, tempFiadoAmount, cWa);
-                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'FIAR', cWa); // 🔥 AGREGADO
+                await saveLogDB({ type: 'VENTA', method: 'FIADO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Venta de ${qty}x ${codeStr} ${prodNameF ? ' - ' + prodNameF : ''} a ${cName} (FIADO)` });
+                await updateClientDebtDB(cName, tempFiadoAmount, cWa);
+                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'FIAR', cWa);
 
                 if (selProd && codeStr !== 'VARIOS') {
-                    let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
-                    let item = invList.find(i => normCode(i.code) === normCode(codeStr));
-                    if (item) {
-                        item.stock = (parseFloat(item.stock) || 0) - finalQty;
-                    }
-                    dbState.inventory = invList;
-                    saveLocalInventory(dbState.inventory);
+                    let item = dbState.inventory.find(i => normCode(i.codigo) === normCode(codeStr));
+                    if (item) await _supabase.from('ruta38_inventario').update({ stock: (parseFloat(item.stock) - qty) }).eq('id', item.id);
                 }
-
-                renderAllData();
-                document.getElementById('fiado-modal').style.display='none'; 
-                showToast("Fiado guardado"); clearCalc(); 
             } else if(actionType === 'COBRO_EFECTIVO') { 
-                let newLog = { type: 'COBRO', method: 'EFECTIVO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${cName} (EFECTIVO)` };
-                saveLocalLogs(newLog); if(!dbState.logs) dbState.logs = []; dbState.logs.unshift(newLog); 
-                updateClientDebtLocal(cName, -tempFiadoAmount, cWa);
-                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'COBRO', cWa); // 🔥 AGREGADO
-                
-                renderAllData();
-                document.getElementById('fiado-modal').style.display='none'; 
-                showToast("Cobro guardado"); clearCalc(); 
+                await saveLogDB({ type: 'COBRO', method: 'EFECTIVO', amount: tempFiadoAmount, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cobro a ${cName} (EFECTIVO)` });
+                await updateClientDebtDB(cName, -tempFiadoAmount, cWa);
+                enviarReciboWhatsAppAuto(cName, tempFiadoAmount, 'COBRO', cWa);
             } else if(actionType === 'COBRO_TRANSF') { 
                 pendingTransferData = { type: 'COBRO_TRANSF', amount: tempFiadoAmount, cName: cName, cWa: cWa }; 
-                abrirSheetTransfCobro(); 
+                abrirSheetTransfCobro(); return;
             } 
+            document.getElementById('fiado-modal').style.display='none'; showToast("Transacción lista"); clearCalc(); 
         }
 
-        function toggleGps(force = false) { 
-            let btn = document.getElementById('btn-gps'); 
-            let turningOn = force ? true : !window.gpsActive;
-
-            if(turningOn) { 
-                btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>BUSCANDO...'; 
-                btn.style.borderColor = "#0ea5e9";
-                btn.style.color = "white";
-                btn.style.background = "#0ea5e9";
-                window.gpsActive = true;
-                
-                if(navigator.geolocation) { 
-                    const enviarPosicion = (p) => {
-                        btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
-                        let payload = { local: cUser, actor: cUser, lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() };
-                        dbState.last_gps = payload; renderAllData();
-                    };
-
-                    navigator.geolocation.getCurrentPosition(enviarPosicion, err => { 
-                        if(!force) alert("⚠️ Activa la Ubicación en tu celular y dale permisos al navegador. (Asegurate de estar usando HTTPS)."); 
-                        btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
-                        btn.style.borderColor = "#e2e8f0"; btn.style.background = "#ffffff"; btn.style.color = "#1e293b"; window.gpsActive = false;
-                    }, { enableHighAccuracy: true, timeout: 10000 }); 
-                    
-                    if(!window.gpsInterval) { 
-                        window.gpsInterval = setInterval(() => { 
-                            if(window.gpsActive) {
-                                navigator.geolocation.getCurrentPosition(enviarPosicion, err => {}, { enableHighAccuracy: true }); 
-                            }
-                        }, 8000); 
-                    }
-                } else { 
-                    if(!force) alert("Tu celular no soporta GPS."); 
-                    window.gpsActive = false;
-                    btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF';
-                    btn.style.background = "#ffffff"; btn.style.color = "#1e293b";
-                }
-            } else { 
-                btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
-                btn.style.borderColor = "#e2e8f0"; btn.style.color = "#1e293b"; btn.style.background = "#ffffff";
-                window.gpsActive = false; 
-                clearInterval(window.gpsInterval); 
-                window.gpsInterval = null;
-            } 
-        }
-        
-        function uploadMerchandise() { 
-            let codeVal = document.getElementById('add-code').value.trim(); 
-            let name = document.getElementById('add-name').value.trim(); 
-            let price = document.getElementById('add-price').value.trim(); 
-            let stock = document.getElementById('add-stock').value.trim(); 
-            let unit = document.getElementById('add-unit').value; 
+        async function uploadMerchandise() { 
+            let codigo = 'ART-' + normCode(document.getElementById('add-code').value.trim()); 
+            let nombre = document.getElementById('add-name').value.trim(); 
+            let precio = parseFloat(document.getElementById('add-price').value.trim()) || 0; 
+            let stock = parseFloat(document.getElementById('add-stock').value.trim()) || 0; 
+            let unidad = document.getElementById('add-unit').value; 
             
-            if(!codeVal || !name || !price || !stock) return alert("Completá todos los campos."); 
+            if(!document.getElementById('add-code').value || !nombre) return alert("Faltan datos."); 
             
-            let clean = normCode(codeVal);
-            let finalCode = 'ART-' + clean;
-            
-            let delProds = getLocalDeletedProducts();
-            saveLocalDeletedProducts(delProds.filter(c => c !== clean));
-
-            let nuevoItem = { code: finalCode, name: name, price: parseFloat(price) || 0, stock: parseFloat(stock) || 0, measure_unit: unit };
-            if(!dbState.inventory) dbState.inventory = [];
-            let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory);
-            
-            let existe = invList.findIndex(i => normCode(i.code) === clean);
-            if(existe >= 0) { invList[existe] = nuevoItem; } else { invList.push(nuevoItem); }
-            
-            dbState.inventory = invList;
-            saveLocalInventory(dbState.inventory); 
-            
-            renderAllData(); 
+            let existente = dbState.inventory.find(i => i.codigo === codigo);
+            if(existente) {
+                await _supabase.from('ruta38_inventario').update({ nombre, precio, stock, unidad }).eq('id', existente.id);
+            } else {
+                await _supabase.from('ruta38_inventario').insert([{ local_id: cUserId, codigo, nombre, precio, stock, unidad }]);
+            }
             
             document.getElementById('add-code').value=''; document.getElementById('add-name').value=''; document.getElementById('add-price').value=''; document.getElementById('add-stock').value=''; 
-            showToast("✅ Artículo cargado."); 
+            showToast("✅ Artículo cargado."); fetchDbData();
         }
 
-        function eliminarProducto(code) { 
-            if(confirm("¿Eliminar artículo " + code + "?")) { 
-                let clean = normCode(code);
-                
-                let delProds = getLocalDeletedProducts();
-                if(!delProds.includes(clean)) { delProds.push(clean); saveLocalDeletedProducts(delProds); }
-                
-                let invList = Array.isArray(dbState.inventory) ? dbState.inventory : Object.values(dbState.inventory || {});
-                dbState.inventory = invList.filter(i => normCode(i.code) !== clean);
-                saveLocalInventory(dbState.inventory); 
-
-                renderAllData();
+        async function eliminarProducto(id) { 
+            if(confirm("¿Eliminar artículo?")) { 
+                await _supabase.from('ruta38_inventario').delete().eq('id', id);
+                fetchDbData();
             } 
         }
-        
-        function descargarPDFDay() { 
-            try { 
-                if(!window.jspdf || !window.jspdf.jsPDF) return alert("Error cargando librería PDF."); 
-                const { jsPDF } = window.jspdf; 
-                const doc = new jsPDF(); 
-                let hoy = getTucumanDateFE(); 
-                doc.setFontSize(18); 
-                doc.text(`Resumen de Turno Activo - ${cUser}`, 14, 20); 
-                doc.setFontSize(10); 
-                doc.text(`Generado: ${hoy} ${getTucumanTimeFE()}`, 14, 28); 
-                
-                let datosTurno = []; 
-                for(let i=0; i<dbState.logs.length; i++) { 
-                    let tx = dbState.logs[i]; 
-                    let descStr = tx.description ? String(tx.description) : ""; 
-                    if(descStr.toLowerCase().includes('cierre de caja')) { if (i !== 0) break; } 
-                    datosTurno.push(tx); 
-                } 
-                if(datosTurno.length === 0) return alert("No hay transacciones en el turno actual."); 
-                
-                let htmlFilas = []; 
-                for(let i=0; i<datosTurno.length; i++) { 
-                    let tx = datosTurno[i]; 
-                    let descStr = tx.description ? String(tx.description) : ""; 
-                    htmlFilas.push([ `${tx.time}`, tx.type.toUpperCase(), tx.method.toUpperCase(), descStr, `$${Math.abs(tx.amount).toLocaleString('es-AR')}` ]); 
-                } 
-                
-                doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid', headStyles: { fillColor: [2, 132, 199] }, columnStyles: { 3: {cellWidth: 60} } }); 
-                doc.save(`Reporte_Turno_${cUser}_${hoy.replace(/\//g,'-')}.pdf`); 
-            } catch(e) { alert("Error al generar PDF: " + e.message); } 
+
+        async function eliminarDeudor(name) {
+            if(confirm(`¿ELIMINAR deuda de ${name}?`)) {
+                let client = dbState.clients.find(c => c.nombre === name);
+                if (client) await _supabase.from('ruta38_clientes').delete().eq('id', client.id);
+                fetchDbData();
+            }
         }
         
         async function closeRegister() { 
@@ -1653,39 +1100,74 @@
             let tFia = document.getElementById('adm-fiado') ? document.getElementById('adm-fiado').innerText : '$0'; 
             
             if (dbState.logs && dbState.logs.length > 0) { 
-                descargarPDFDay(); 
+                try { 
+                    if(!window.jspdf || !window.jspdf.jsPDF) throw new Error();
+                    const { jsPDF } = window.jspdf; const doc = new jsPDF(); 
+                    doc.setFontSize(18); doc.text(`Resumen de Turno Activo - ${cUser}`, 14, 20); 
+                    
+                    let htmlFilas = []; 
+                    for(let i=0; i<dbState.logs.length; i++) { 
+                        let tx = dbState.logs[i]; 
+                        let descStr = String(tx.descripcion || ""); 
+                        if(descStr.toLowerCase().includes('cierre de caja') || tx.tipo === 'SISTEMA') break; 
+                        htmlFilas.push([ `${tx.hora}`, tx.tipo.toUpperCase(), tx.metodo.toUpperCase(), descStr, `$${Math.abs(tx.monto).toLocaleString('es-AR')}` ]); 
+                    } 
+
+                    if(htmlFilas.length > 0) {
+                        doc.autoTable({ startY: 35, head: [['Hora', 'Operación', 'Método', 'Descripción', 'Monto']], body: htmlFilas, theme: 'grid' }); 
+                        doc.save(`Cierre_${cUser}_${getTucumanDateFE().replace(/\//g,'-')}.pdf`); 
+                    }
+                } catch(e) {}
             } 
             
-            let msg = `*CIERRE DE TURNO - ${cUser}* 🔐\n\n💵 Efectivo Físico a rendir: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata acumulada en la calle: ${tFia}\n\n_Reporte autogenerado por Ruta 38 Envíos_`; 
-            let waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
-            
-            window.location.href = waUrl; 
-            
-            document.getElementById('adm-cash').innerText = "$0"; 
-            document.getElementById('adm-transf').innerText = "$0"; 
-            document.getElementById('adm-fiado').innerText = "$0"; 
-            document.getElementById('audit-logs-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>No hay transacciones aún.</p>"; 
-            document.getElementById('chofer-logs-modal-container').innerHTML = "<p style='color:#94a3b8; text-align:center;'>Tus ventas aprobadas aparecerán aquí.</p>"; 
-            document.getElementById('calc-total').innerText = "0"; 
-            
-            localStorage.removeItem('ruta38_logs_' + cUser);
-            dbState.logs = [];
-            
-            await syncToCloud();
+            await saveLogDB({ type: 'SISTEMA', method: 'SISTEMA', amount: 0, date: getTucumanDateFE(), time: getTucumanTimeFE(), description: `Cierre de Caja - Efectivo: ${tEfe} | Transferencias: ${tTra}` });
+
+            let msg = `*CIERRE DE TURNO - ${cUser}*\n\n💵 Efectivo: ${tEfe}\n🏦 Transferencias: ${tTra}\n📒 Plata en la calle: ${tFia}`; 
+            window.location.href = 'https://wa.me/?text=' + encodeURIComponent(msg); 
         }
-        
+
+        function toggleGps(force = false) { 
+            let btn = document.getElementById('btn-gps'); 
+            let turningOn = force ? true : !window.gpsActive;
+
+            if(turningOn) { 
+                btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>BUSCANDO...'; 
+                btn.style.borderColor = "#0ea5e9"; btn.style.color = "white"; btn.style.background = "#0ea5e9";
+                window.gpsActive = true;
+                
+                if(navigator.geolocation) { 
+                    const enviarPosicion = (p) => {
+                        btn.innerHTML = '<span class="n-icon" style="color:white; margin-right:4px;">📍</span>ON'; 
+                        dbState.last_gps = { lat: p.coords.latitude, lon: p.coords.longitude, time: getTucumanTimeFE() }; renderAllData();
+                    };
+
+                    navigator.geolocation.getCurrentPosition(enviarPosicion, err => { 
+                        btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                        btn.style.borderColor = "#e2e8f0"; btn.style.background = "#ffffff"; btn.style.color = "#1e293b"; window.gpsActive = false;
+                    }, { enableHighAccuracy: true, timeout: 10000 }); 
+                    
+                    if(!window.gpsInterval) { 
+                        window.gpsInterval = setInterval(() => { 
+                            if(window.gpsActive) navigator.geolocation.getCurrentPosition(enviarPosicion, err => {}, { enableHighAccuracy: true }); 
+                        }, 8000); 
+                    }
+                } else { 
+                    window.gpsActive = false;
+                    btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF';
+                    btn.style.background = "#ffffff"; btn.style.color = "#1e293b";
+                }
+            } else { 
+                btn.innerHTML = '<span class="n-icon" style="color:#94a3b8; margin-right:4px;">📍</span>OFF'; 
+                btn.style.borderColor = "#e2e8f0"; btn.style.color = "#1e293b"; btn.style.background = "#ffffff";
+                window.gpsActive = false; clearInterval(window.gpsInterval); window.gpsInterval = null;
+            } 
+        }
+
         function leerCaracteristicasApp() { 
             window.speechSynthesis.cancel();
-            
             const speech = new SpeechSynthesisUtterance(); 
             speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos la plataforma definitiva que controla los repartos y las ventas directas de tu local. Es el sistema ideal para pizzerías, sandwicherías, panaderías, distribuidoras y comercios de artículos varios o únicos como baterías. Con esta aplicación, llevás el control total de tu negocio: el dueño supervisa todo desde su casa mirando el celular en tiempo real, ya sea que el empleado venda en el mostrador o en la calle. La calculadora inteligente selecciona el producto, calcula el total al instante y cierra ventas en efectivo o transferencia, registrando el nombre exacto de lo que se vendió para tu tranquilidad. Además, incluye libreta de fiados y cobro automático por WhatsApp. ¡Sumate al futuro y vendé más y mejor con nosotros!"; 
-            speech.lang = 'es-AR'; 
-            speech.rate = 1.0; 
-            
-            speech.onend = function() {
-                console.log("Audio finalizado correctamente.");
-            };
-            
+            speech.lang = 'es-AR'; speech.rate = 1.0; 
             window.speechSynthesis.speak(speech); 
         }
 
@@ -1693,8 +1175,7 @@
         const btnInstalar = document.getElementById('btn-instalar-app');
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            eventoInstalacion = e;
+            e.preventDefault(); eventoInstalacion = e;
             if (btnInstalar) btnInstalar.style.display = 'block';
         });
 
@@ -1703,27 +1184,12 @@
                 if (!eventoInstalacion) return;
                 eventoInstalacion.prompt();
                 const { outcome } = await eventoInstalacion.userChoice;
-                if (outcome === 'accepted') {
-                    btnInstalar.style.display = 'none';
-                }
+                if (outcome === 'accepted') btnInstalar.style.display = 'none';
                 eventoInstalacion = null;
             });
         }
-
-        window.addEventListener('appinstalled', () => {
-            if (btnInstalar) btnInstalar.style.display = 'none';
-        });
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').then(reg => {
-                    console.log('Service Worker listo', reg);
-                }).catch(err => {
-                    console.log('Error Service Worker', err);
-                });
-            });
-        }
-
+        window.addEventListener('appinstalled', () => { if (btnInstalar) btnInstalar.style.display = 'none'; });
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
     </script>
 </body>
 </html>
