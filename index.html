@@ -87,7 +87,6 @@
         .chofer-btn-white { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 4px; flex: 1; font-weight: 800; font-size: 0.85rem; color: #1e293b; box-shadow: 0 4px 10px rgba(0,0,0,0.03); cursor: pointer; transition: transform 0.1s; font-family: 'Outfit', sans-serif; display: flex; justify-content: center; align-items: center; gap: 5px;}
         .chofer-btn-white:active { transform: scale(0.95); background: #f8fafc; border-color: #cbd5e1; }
 
-        /* MODIFICADO: Agregado overflow-y para que la calculadora pueda scrollear si la caja es grande */
         .product-list-wrapper { flex: 1; min-height: 0; display:flex; flex-direction:column; justify-content:center; padding: 4px 0; margin-bottom: 8px; overflow-y: auto; }
 
         .chofer-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; flex-shrink: 0; }
@@ -316,7 +315,7 @@
             <div class="landing-hero-3d">
                 <div class="logo-3d-container"><div class="logo-3d-text">38</div></div>
                 <h1 style="font-size: 2.2rem; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; line-height: 1.1; font-family:'Outfit',sans-serif;">RUTA 38<br><span style="color: #0ea5e9;">ENVÍOS</span></h1>
-                <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; font-weight: 500; margin: 0 10px 15px 10px;">La inteligencia artificial que <b>controla las ventas de tu local y los repartos en calle</b>. Ideal para <b>pizzerías, sandwicherías, panaderías, distribuidoras y artículos únicos</b> las 24 hs.</p>
+                <p style="font-size: 0.95rem; color: #475569; line-height: 1.5; font-weight: 500; margin: 0 10px 15px 10px;">La inteligencia artificial que <b>controla las ventas de tu local y los repartos en calle</b>. Ideal para <b>repartidores de bebida, lácteos, panaderías y artículos varios</b> las 24 hs.</p>
                 <button onclick="leerCaracteristicasApp()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: 900; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4); cursor: pointer; font-size: 0.95rem; letter-spacing: 0.5px; transition: transform 0.2s;">🎙️ ESCUCHAR CÓMO FUNCIONA</button>
             </div>
 
@@ -400,7 +399,7 @@
             <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
                 <div style="width:45px; height:45px; background:linear-gradient(135deg, #10b981, #059669); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:10px; box-shadow:0 8px 15px rgba(16,185,129,0.3);">🍕</div>
                 <h4 style="font-size:1.1rem; font-weight:900; color:#0f172a; margin:0 0 6px 0; letter-spacing: -0.5px; font-family:'Outfit',sans-serif;">Control Total de tu Negocio</h4>
-                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Llevá el control total de ventas para artículos varios. Perfecto para <b>pizzerías, sandwicherías</b> o locales con venta de repuestos. Tus empleados registran la venta al instante y vos lo ves desde tu casa.</p>
+                <p style="font-size:0.9rem; color:#475569; margin:0; line-height:1.5; font-weight: 500;">Llevá el control total de ventas. Perfecto para <b>repartidores de bebida, lácteos, panaderías</b> o locales con artículos varios. Tus empleados registran la venta al instante y vos lo ves desde tu casa.</p>
             </div>
 
             <div class="glass-card-light" style="padding:20px; margin-bottom:15px;">
@@ -549,7 +548,7 @@
                     <span style="font-size:1.1rem; font-weight:900; margin-right:12px; color:#0ea5e9; font-family: 'Outfit', sans-serif;">ART-</span>
                     <input type="number" id="add-code" class="input-light-admin" placeholder="Ej: 001" style="flex:1; margin-bottom:0;">
                 </div>
-                <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Pan Flauta)">
+                <input type="text" id="add-name" class="input-light-admin" placeholder="Nombre (Ej: Gaseosa)">
                 <input type="number" id="add-price" class="input-light-admin" placeholder="Precio Unidad/Kilo ($)">
                 <input type="number" id="add-stock" class="input-light-admin" placeholder="Stock Cargado">
                 
@@ -1057,22 +1056,23 @@
                     let stockDisplay = i.unidad === 'Unid' ? Math.round(pStock) : Number(pStock.toFixed(2));
                     
                     let imgHtml = i.imagen_url 
-                        ? `<img src="${i.imagen_url}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 10px; margin-right: 12px; border: 1px solid #e2e8f0; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">` 
-                        : `<div style="width: 50px; height: 50px; border-radius: 10px; margin-right: 12px; background: #f1f5f9; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#94a3b8; flex-shrink: 0; border: 1px dashed #cbd5e1;">📦</div>`;
+                        ? `<img src="${i.imagen_url}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; flex-shrink: 0;">` 
+                        : `<div style="width: 100px; height: 100px; border-radius: 14px; background: #f8fafc; border: 2px dashed #cbd5e1; display:flex; align-items:center; justify-content:center; font-size:2.5rem; color:#94a3b8; flex-shrink: 0;">📦</div>`;
 
                     adminInvHtml += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; padding:12px; border-radius:16px; margin-bottom:12px; border:1px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
-                        <div style="display:flex; align-items:center; overflow: hidden; flex: 1;">
-                            ${imgHtml}
-                            <div style="flex: 1; overflow: hidden;">
-                                <div style="color:#0f172a; font-weight:900; font-family:'Outfit',sans-serif; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.codigo} - ${i.nombre}</div>
-                                <div style="color:#0ea5e9; font-size:0.85rem; font-weight:800; margin-top: 2px;">$${pPrice} / ${i.unidad}</div>
+                    <div style="background:#ffffff; border-radius:20px; padding:15px; margin-bottom:12px; border:1px solid #e2e8f0; box-shadow:0 8px 25px rgba(0,0,0,0.04); display:flex; gap: 15px; align-items:center; position:relative;">
+                        ${imgHtml}
+                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 100px; padding: 2px 0;">
+                            <div style="padding-right: 35px;">
+                                <div style="font-weight:900; color:#0f172a; font-size:1.1rem; font-family:'Outfit',sans-serif; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${i.nombre}</div>
+                                <div style="color:#0ea5e9; font-size:0.75rem; font-weight:800; text-transform:uppercase; margin-top:4px;">🏷️ ${i.codigo}</div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                                <div style="color:#0f172a; font-size:1.6rem; font-weight:900; font-family:'Outfit',sans-serif; letter-spacing:-0.5px; line-height: 1;">$${pPrice}</div>
+                                <div style="background:#10b981; color:white; font-size:0.75rem; font-weight:900; padding:4px 10px; border-radius:20px; text-transform:uppercase; box-shadow: 0 4px 10px rgba(16,185,129,0.3);">Stock: ${stockDisplay}</div>
                             </div>
                         </div>
-                        <div style="text-align:right; display:flex; gap:12px; align-items:center; margin-left: 10px; flex-shrink: 0;">
-                            <div style="color:#10b981; font-weight:900; font-size:1.3rem; font-family:'Outfit',sans-serif;">${stockDisplay}</div>
-                            <button onclick="eliminarProducto('${i.codigo}')" style="background:#ffe4e6; border:1px solid #fda4af; border-radius:10px; color:#e11d48; padding:8px 12px; cursor:pointer; font-size: 1rem; transition: 0.2s;">🗑️</button>
-                        </div>
+                        <button onclick="eliminarProducto('${i.codigo}')" style="position:absolute; top:15px; right:15px; background:#ffe4e6; border:1px solid #fda4af; border-radius:10px; color:#e11d48; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.1rem; transition:0.2s; padding:0; box-shadow:0 4px 10px rgba(225,29,72,0.15);">🗑️</button>
                     </div>`;
                 });
 
@@ -1628,7 +1628,7 @@
             window.speechSynthesis.cancel();
             
             const speech = new SpeechSynthesisUtterance(); 
-            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos la plataforma definitiva que controla los repartos y las ventas directas de tu local. Es el sistema ideal para pizzerías, sandwicherías, panaderías, distribuidoras y comercios de artículos varios o únicos como baterías. Con esta aplicación, llevás el control total de tu negocio: el dueño supervisa todo desde su casa mirando el celular en tiempo real, ya sea que el empleado venda en el mostrador o en la calle. La calculadora inteligente selecciona el producto, calcula el total al instante y cierra ventas en efectivo o transferencia, registrando el nombre exacto de lo que se vendió para tu tranquilidad. Además, incluye libreta de fiados y cobro automático por WhatsApp. ¡Sumate al futuro y vendé más y mejor con nosotros!"; 
+            speech.text = "¡Hola! Bienvenidos a Energy. Te presentamos la plataforma definitiva que controla los repartos y las ventas directas de tu local. Es el sistema ideal para repartidores de bebida, de lácteo, para panaderías y artículos varios. Con esta aplicación, llevás el control total de tu negocio: el dueño supervisa todo desde su casa mirando el celular en tiempo real, ya sea que el empleado venda en el mostrador o en la calle. La calculadora inteligente selecciona el producto, calcula el total al instante y cierra ventas en efectivo o transferencia, registrando el nombre exacto de lo que se vendió para tu tranquilidad. Además, incluye libreta de fiados y cobro automático por WhatsApp. ¡Sumate al futuro y vendé más y mejor con nosotros!"; 
             speech.lang = 'es-AR'; 
             speech.rate = 1.0; 
             
